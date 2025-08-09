@@ -1,14 +1,14 @@
 # AnimaTween
 
-**AnimaTween** ? The animation tween you see in any game engine.
+**AnimaTween** – The animation tween you see in any game engine.
 A simple and flexible way to animate fields and properties of your objects directly in Unity.
 
 ---
 
-## ? Installation
+## 📦 Installation
 
-1. Open Unity and go to **Window ? Package Manager**.
-2. Click the **+** button ? **Add package from git URL...**
+1. Open Unity and go to **Window → Package Manager**.
+2. Click the **+** button → **Add package from git URL...**
 3. Paste the repository URL:
 
    ```
@@ -18,7 +18,7 @@ A simple and flexible way to animate fields and properties of your objects direc
 
 ---
 
-## ? Usage
+## 🚀 Usage
 
 Once installed, simply import the namespace and call `AnimaTween` on any supported object.
 
@@ -55,7 +55,7 @@ public class GameManager : MonoBehaviour
 
 ---
 
-## ? How it works
+## 📖 How it works
 
 * `AnimaTween` takes the name of a **field** or **property** as a string and animates its value over time.
 * Supports **float**, **int**, **Vector2**, **Vector3**, and other numerical types.
@@ -63,7 +63,7 @@ public class GameManager : MonoBehaviour
 
 ---
 
-## ? Documentation
+## 📚 Documentation
 
 **Functions:**
 
@@ -99,7 +99,7 @@ AnimaTween.OutQuad, AnimaTween.OutQuart, AnimaTween.OutQuint, AnimaTween.OutSine
 ```
 
 See visual representation of each easing curve here:
-?? **[Defold Easing Reference](https://defold.com/manuals/property-animation/#easing)**
+➡️ **[Defold Easing Reference](https://defold.com/manuals/property-animation/#easing)**
 
 **Example:**
 
@@ -113,7 +113,7 @@ playerData.AnimaTween("score", 1000, 3.0f,
 
 ---
 
-## ? License
+## 📝 License
 
-This project is licensed under the **MIT License** ? free to use for any purpose, including commercial, with attribution.
+This project is licensed under the **MIT License** – free to use for any purpose, including commercial, with attribution.
 See the [LICENSE](LICENSE) file for details.
