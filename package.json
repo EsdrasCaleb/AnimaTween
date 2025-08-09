@@ -1,0 +1,25 @@
+{
+  "name": "com.esdrascaleb.animatween",
+  "version": "1.0.0",
+  "displayName": "AnimaTween",
+  "description": "A simple, lightweight, and zero-setup tweening engine for Unity, inspired by the intuitive APIs of other game engines. Animate properties by name without external dependencies.",
+  "unity": "2021.3",
+  "documentationUrl": "https://github.com/esdrascaleb/AnimaTween#readme",
+  "licensesUrl": "https://github.com/esdrascaleb/AnimaTween/blob/main/LICENSE",
+  "keywords": [
+    "tween",
+    "animation",
+    "scripting",
+    "tools",
+    "utility",
+    "dotween",
+    "leanween",
+    "godot",
+    "defold"
+  ],
+  "author": {
+    "name": "Esdras Caleb",
+    "email": "acheicaleb@msn.com",
+    "url": "https://esdrascaleb.github.io/"
+  }
+}
