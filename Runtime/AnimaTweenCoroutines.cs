@@ -2,124 +2,115 @@
 using UnityEngine;
 using System;
 using System.Collections;
-using System.Reflection;
+
 
 
 namespace AnimaTween
 {
     internal static class AnimaTweenCoroutines
     {
-        // Helper para verificar se o objeto foi destruído
-        internal static bool IsTargetDestroyed(object target)
+        /// <summary>
+        /// Checks if a Unity Object has been destroyed.
+        /// </summary>
+        public static bool IsTargetDestroyed(object target)
         {
-            // Sua implementação de limpeza pode ser chamada aqui se desejar.
             return target is UnityEngine.Object obj && obj == null;
         }
 
-        internal static IEnumerator AnimateNumeric(object target, FieldInfo field, PropertyInfo prop, Type originalType, float startValue, float toValue, float duration, Easing easing)
+        /// <summary>
+        /// The main dispatcher. It determines the correct interpolation logic based on the
+        /// target's type and passes it to the AnimateCore engine.
+        /// </summary>
+        public static IEnumerator Animate(TweenInfo tweenInfo, float duration, Easing easing, bool isFrom)
         {
-            return AnimateCore(target, duration, easing, progress =>
-            {
-                float currentValue = Mathf.Lerp(startValue, toValue, progress);
-                object valueToSet = (originalType == typeof(int)) ? (object)Mathf.RoundToInt(currentValue) : currentValue;
-                
-                if (field != null) field.SetValue(target, valueToSet);
-                else prop.SetValue(target, valueToSet);
-            });
-        }
+            object start = isFrom ? tweenInfo.ToValue : tweenInfo.StartValue;
+            object end = isFrom ? tweenInfo.StartValue : tweenInfo.ToValue;
+            Type targetType = tweenInfo.StartValue.GetType();
 
-        internal static IEnumerator AnimateVector2(object target, FieldInfo field, PropertyInfo prop, Vector2 startValue, Vector2 toValue, float duration, Easing easing)
+            if (targetType == typeof(string))
+            {
+                return AnimateString(tweenInfo, (string)start, (string)end, duration, easing);
+            }
+
+            Action<float> updater;
+            
+            if (targetType == typeof(float) || targetType == typeof(int))
+            {
+                float s = Convert.ToSingle(start);
+                float e = Convert.ToSingle(end);
+                updater = p => {
+                    float val = Mathf.Lerp(s, e, GetEasedProgress(easing, p));
+                    tweenInfo.SetValue(targetType == typeof(int) ? (object)Mathf.RoundToInt(val) : val);
+                };
+            }
+            else if (targetType == typeof(Vector3))
+            {
+                Vector3 s = (Vector3)start;
+                Vector3 e = (Vector3)end;
+                updater = p => tweenInfo.SetValue(Vector3.Lerp(s, e, GetEasedProgress(easing, p)));
+            }
+            else if (targetType == typeof(Vector2))
+            {
+                Vector2 s = (Vector2)start;
+                Vector2 e = (Vector2)end;
+                updater = p => tweenInfo.SetValue(Vector2.Lerp(s, e, GetEasedProgress(easing, p)));
+            }
+            else if (targetType == typeof(Color))
+            {
+                Color s = (Color)start;
+                Color e = (Color)end;
+                updater = p => tweenInfo.SetValue(Color.Lerp(s, e, GetEasedProgress(easing, p)));
+            }
+            else if (targetType == typeof(Quaternion))
+            {
+                Quaternion s = (Quaternion)start;
+                Quaternion e = (Quaternion)end;
+                updater = p => tweenInfo.SetValue(Quaternion.Slerp(s, e, GetEasedProgress(easing, p)));
+            }
+            else
+            {
+                Debug.LogError($"AnimaTween: Unsupported property type for tweening: {targetType.Name}");
+                return null;
+            }
+
+            return AnimateCore(updater, duration);
+        }
+        
+        /// <summary>
+        /// The generic animation engine. It handles the core loop of time and progress.
+        /// </summary>
+        private static IEnumerator AnimateCore(Action<float> updater, float duration)
         {
-            return AnimateCore(target, duration, easing, progress =>
+            float elapsedTime = 0f;
+            
+            while (elapsedTime <= duration)
             {
-                float easedProgress = GetEasedProgress(easing, progress);
-                Vector2 currentValue = Vector2.Lerp(startValue, toValue, easedProgress);
-
-                if (field != null) field.SetValue(target, currentValue);
-                else prop.SetValue(target, currentValue);
-            });
+                float progress = (duration > 0) ? elapsedTime / duration : 1f;
+                updater(progress);
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+            // This final call ensures the animation always ends at exactly 100% progress.
+            updater(1.0f);
         }
-
-        internal static IEnumerator AnimateVector3(object target, FieldInfo field, PropertyInfo prop, Vector3 startValue, Vector3 toValue, float duration, Easing easing)
-        {
-            return AnimateCore(target, duration, easing, progress =>
-            {
-                float easedProgress = GetEasedProgress(easing, progress);
-                Vector3 currentValue = Vector3.Lerp(startValue, toValue, easedProgress);
-
-                if (field != null) field.SetValue(target, currentValue);
-                else prop.SetValue(target, currentValue);
-            });
-        }
-
-        internal static IEnumerator AnimateColor(object target, FieldInfo field, PropertyInfo prop, Color startValue, Color toValue, float duration, Easing easing)
-        {
-            return AnimateCore(target, duration, easing, progress =>
-            {
-                float easedProgress = GetEasedProgress(easing, progress);
-                Color currentValue = Color.Lerp(startValue, toValue, easedProgress);
-
-                if (field != null) field.SetValue(target, currentValue);
-                else prop.SetValue(target, currentValue);
-            });
-        }
-
-        internal static IEnumerator AnimateQuaternion(object target, FieldInfo field, PropertyInfo prop, Quaternion startValue, Quaternion toValue, float duration, Easing easing)
-        {
-            return AnimateCore(target, duration, easing, progress =>
-            {
-                float easedProgress = GetEasedProgress(easing, progress);
-                Quaternion currentValue = Quaternion.Slerp(startValue, toValue, easedProgress);
-
-                if (field != null) field.SetValue(target, currentValue);
-                else prop.SetValue(target, currentValue);
-            });
-        }
-
-        internal static IEnumerator AnimateString(object target, FieldInfo field, PropertyInfo prop, string startValue, string toValue, float duration, Easing easing)
+        
+        /// <summary>
+        /// A special coroutine to handle the typewriter effect for strings.
+        /// </summary>
+        private static IEnumerator AnimateString(TweenInfo tweenInfo, string startValue, string toValue, float duration, Easing easing)
         {
             int startLength = startValue.Length;
             int endLength = toValue.Length;
             string baseString = endLength > startLength ? toValue : startValue;
 
-            return AnimateCore(target, duration, easing, progress =>
-            {
-                float easedProgress = GetEasedProgress(easing, progress);
+            Action<float> updater = p => {
+                float easedProgress = GetEasedProgress(easing, p);
                 int currentLength = Mathf.RoundToInt(Mathf.Lerp(startLength, endLength, easedProgress));
                 string currentValue = baseString.Substring(0, Mathf.Clamp(currentLength, 0, baseString.Length));
-                
-                if (field != null) field.SetValue(target, currentValue);
-                else prop.SetValue(target, currentValue);
-            });
-        }
-        
-        /// <summary>
-        /// O "motor" de corrotina genérico. Lida com o tempo, progresso e loop.
-        /// </summary>
-        /// <param name="updateAction">A ação a ser executada a cada frame, recebendo o progresso (0 a 1).</param>
-        private static IEnumerator AnimateCore(object target, float duration,Easing easing, Action<float> updateAction)
-        {
-            float elapsedTime = 0f;
-            float progress = 0f;
-            // O loop agora continua até que a duração seja atingida ou ultrapassada.
-            do
-            {
-                if (IsTargetDestroyed(target)) yield break;
-                progress = GetEasedProgress(easing, elapsedTime/duration);
-                // A ação de atualização é chamada com o progresso atual.
-                updateAction(progress);
+                tweenInfo.SetValue(currentValue);
+            };
 
-                elapsedTime += Time.deltaTime;
-                yield return null;
-            } while (progress < 1);
-        }
-        
-        
-        // Auxiliry function to clap progress
-        private static float GetEasedProgress(Easing ease, float progress)
-        {
-            // O Clamp01 aqui é a chave para a sua lógica funcionar.
-            return GetEasedProgressRaw(ease, Mathf.Clamp01(progress));
+            return AnimateCore(updater, duration);
         }
 
         /// <summary>
@@ -128,7 +119,7 @@ namespace AnimaTween
         /// <param name="ease">The type of easing curve to use.</param>
         /// <param name="progress">The linear progress of the animation (0 to 1).</param>
         /// <returns>The eased progress (can be outside 0-1 for some types like Back or Elastic).</returns>
-        private static float GetEasedProgressRaw(Easing ease, float progress)
+        private static float GetEasedProgress(Easing ease, float progress)
         {
             switch (ease)
             {

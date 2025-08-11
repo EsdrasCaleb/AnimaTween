@@ -1,7 +1,7 @@
 using UnityEngine;
 using AnimaTween;
 using UnityEngine.UI;
-using System.Collections; // Required for IEnumerator if needed, good practice to keep.
+
 
 namespace AnimaTween
 {
@@ -179,7 +179,7 @@ namespace AnimaTween
                 textArea2.AFade(1f);
                 textArea1.ATween("text", "Control Tweens... Control the GAME!", 2.0f, Easing.Linear);
                 // Stop physics timers and scale animation.
-                this.ACompleteTimers();
+                this.ACompleteTimer();
                 cube.AComplete("localScale");
 
                 // Reset cube state

@@ -76,9 +76,8 @@ namespace AnimaTween
     // --- THE MAIN EXTENSION CLASS ---
     public static class AnimaTweenExtensions
     {
-        private static readonly Dictionary<Tuple<object, string>, TweenInfo> _activeTweens = new Dictionary<Tuple<object, string>, TweenInfo>();
-        private static AnimaTweenRunner _runner;
-        
+        // A static reference ONLY for the global fallback runner.
+        private static AnimaTweenRunner _globalRunner;
         // --- PUBLIC API METHODS ---
 
         public static void ATween(this object target, string propertyName, object toValue, float duration, 
@@ -86,6 +85,8 @@ namespace AnimaTween
             object fromValue = null)
         {
             // Stops any previous tween on the same property
+            var host = GetHostForTarget(target);
+            if (host == null) return;
             target.AComplete(propertyName, internalCall: true);
 
             FieldInfo fieldInfo = target.GetType().GetField(propertyName, BindingFlags.Public | BindingFlags.Instance);
@@ -105,8 +106,6 @@ namespace AnimaTween
                 if (fieldInfo != null) fieldInfo.SetValue(target, startValue);
                 else propertyInfo.SetValue(target, startValue);
             }
-            
-            
 
             // Logic for animating paths (waypoints)
             if (toValue is IEnumerable path && !(toValue is string))
@@ -119,29 +118,30 @@ namespace AnimaTween
                 }
                 return;
             }
-
-            Type propertyType = fieldInfo != null ? fieldInfo.FieldType : propertyInfo.PropertyType;
             
-
-            // Starts the "maestro" coroutine that will manage playback and finalization.
-            Coroutine newCoroutine = GetRunner().StartCoroutine(
-                TweenConductorCoroutine(target, fieldInfo, propertyInfo, startValue, toValue, duration, easing, playback, onComplete, propertyType)
+            var tweenInfo = new TweenInfo
+            {
+                Target = target,
+                OnComplete = onComplete,
+                StartValue = startValue,
+                ToValue = toValue,
+                FieldInfo = fieldInfo,
+                PropertyInfo = propertyInfo
+            };
+            Debug.Log($"From {startValue} to {toValue}");
+            tweenInfo.Coroutine = host.StartCoroutine(
+                TweenConductorCoroutine(host, propertyName, tweenInfo, duration, easing, playback)
             );
 
-            if (newCoroutine != null)
+            // Add the tween to the correct dictionary.
+            if (host is AnimaTweenInstance instance)
+            {
+                instance.activeTweens[propertyName] = tweenInfo;
+            }
+            else if (host is AnimaTweenRunner runner)
             {
                 var key = new Tuple<object, string>(target, propertyName);
-                var tweenInfo = new TweenInfo
-                {
-                    Target = target,
-                    OnComplete = onComplete,
-                    StartValue = startValue,
-                    ToValue = toValue,
-                    FieldInfo = fieldInfo,
-                    PropertyInfo = propertyInfo,
-                    Coroutine =newCoroutine
-                };
-                _activeTweens[key] = tweenInfo;
+                runner.AddTweenInfo(key, tweenInfo);
             }
         }
         
@@ -151,31 +151,34 @@ namespace AnimaTween
         /// <returns>The unique ID of the created timer for that target, which can be used to stop it later.</returns>
         public static int ATimeout(this object target, float time, Action callback, bool repeat = false)
         {
-            // Find the highest existing timer ID for this specific target and add 1.
-            int nextId = GetAllTimersForTarget(target)
-                .Select(pair => int.TryParse(pair.Key.Item2.Substring("@timer_".Length), out int id) ? id : -1)
-                .DefaultIfEmpty(-1)
-                .Max() + 1;
+            var host = GetHostForTarget(target);
+            var tweenInfo = new TweenInfo { Target = target, OnComplete = callback };
+            int nextId = 0;
+            string key;
 
-            string timerKey = $"@timer_{nextId}";
-            var key = new Tuple<object, string>(target, timerKey);
-            
-            Coroutine newCoroutine = GetRunner().StartCoroutine(
-                TimerCoroutine(key, time, callback, repeat)
-            );
-            if (newCoroutine != null)
+            // Lógica para gerar ID e chave do timer
+            if (host is AnimaTweenInstance instance)
             {
-                var tweenInfo = new TweenInfo
-                {
-                    Target = target,
-                    OnComplete = callback,
-                    Coroutine = newCoroutine
-                };
-
-                _activeTweens[key] = tweenInfo;
+                nextId = instance.activeTweens.Keys
+                    .Where(k => k.StartsWith("@timer_"))
+                    .Select(k => int.TryParse(k.Substring("@timer_".Length), out int id) ? id : -1)
+                    .DefaultIfEmpty(-1).Max() + 1;
+                key = $"@timer_{nextId}";
+                tweenInfo.Coroutine = instance.StartCoroutine(TimerCoroutine(instance, key, tweenInfo, time, repeat));
+                instance.activeTweens[key] = tweenInfo;
             }
-
-            // Return the new ID so the user can store it and cancel it later.
+            else if (host is AnimaTweenRunner runner)
+            {
+                nextId = runner.unhostedTweens.Keys
+                    .Where(k => k.Item1 == target && k.Item2.StartsWith("@timer_"))
+                    .Select(k => int.TryParse(k.Item2.Substring("@timer_".Length), out int id) ? id : -1)
+                    .DefaultIfEmpty(-1).Max() + 1;
+                key = $"@timer_{nextId}";
+                var runnerKey = new Tuple<object, string>(target, key);
+                tweenInfo.Coroutine = runner.StartCoroutine(TimerCoroutine(runner, runnerKey, tweenInfo, time, repeat));
+                runner.AddTweenInfo(runnerKey, tweenInfo);
+            }
+            
             return nextId;
         }
 
@@ -184,76 +187,91 @@ namespace AnimaTween
         /// </summary>
         /// <param name="target">The object whose timers will be stopped.</param>
         /// <param name="timerId">The specific ID of the timer to stop. If omitted (-1), all timers on the object will be stopped.</param>
-        public static void ACompleteTimer(this object target, int timerId = -1, bool withFinalCallback = true)
+        
+        /// <summary>
+        /// Completa um timer específico ou todos os timers em um objeto.
+        /// </summary>
+        public static void ACompleteTimer(this object target, int timerId = -1, bool withCallback = true)
         {
-            // Case 1: Stop all timers for the target (when timerId is the default -1).
+            // Caso 1: Completar todos os timers do alvo.
             if (timerId == -1)
             {
-                target.ACompleteTimers(withFinalCallback);
+                // Checa a instância local e completa seus timers.
+                if (target is Component c && c.TryGetComponent<AnimaTweenInstance>(out var instance))
+                {
+                    instance.activeTweens.Keys
+                        .Where(key => key.StartsWith("@timer_"))
+                        .ToList()
+                        .ForEach(timerKey => target.AComplete(timerKey, withCallback));
+                }
+        
+                // Checa o runner global e completa seus timers para este alvo.
+                if (_globalRunner != null)
+                {
+                    _globalRunner.unhostedTweens.Keys
+                        .Where(key => key.Item1 == target && key.Item2.StartsWith("@timer_"))
+                        .ToList()
+                        // Usamos k.Item2 porque AComplete espera o nome da propriedade (a chave do timer).
+                        .ForEach(k => target.AComplete(k.Item2, withCallback));
+                }
                 return;
             }
-            
-            // Case 2: Stop a specific timer by its ID.
-            // We leverage the general-purpose AComplete function, which is perfectly DRY.
-            string timerKeyToComplete = $"@timer_{timerId}";
-            target.AComplete(timerKeyToComplete, withFinalCallback,EndState.Middle); // internalCall = true
-        }
-
-
-        /// <summary>
-        /// Stops all active timers (created with ATimeout) on a specific object.
-        /// This is now syntactic sugar for calling ACompleteTimer without a specific ID.
-        /// </summary>
-        /// <param name="target">The object whose timers will be stopped.</param>
-        public static void ACompleteTimers(this object target, bool withFinalCallback = true )
-        {
-            var timersToComplete = GetAllTimersForTarget(target).ToList();
-            
-            foreach (var pair in timersToComplete)
-            {
-                target.AComplete(pair.Key.Item2,withFinalCallback,EndState.Middle);
-            }
-        }
-
-
-        public static void AComplete(this object target, bool withCallback = true, 
-            EndState endState=EndState.End)
-        {
-            _activeTweens.Keys.Where(k => k.Item1 == target).ToList()
-                .ForEach(k => target.AComplete(k.Item2, withCallback,endState));
+    
+            // Caso 2: Completar um timer específico pelo seu ID.
+            // A função AComplete principal irá procurar automaticamente nos locais corretos.
+            string specificTimerKey = $"@timer_{timerId}";
+            target.AComplete(specificTimerKey, withCallback);
         }
         
         /// <summary>
         /// Completes a tween, jumping to its final state and executing the OnComplete callback.
         /// </summary>
-        public static void AComplete(this object target, string propertyName, bool withCallback = true,
+        public static void AComplete(this object target, string propertyName=null, bool withCallback = true,
              EndState endState=EndState.End,bool internalCall = false)
         {
-            var key = new Tuple<object, string>(target, propertyName);
-            if (_activeTweens.TryGetValue(key, out TweenInfo tweenInfo))
+            // --- Lógica para completar todos os tweens de um alvo ---
+            if (string.IsNullOrEmpty(propertyName))
             {
-                if (!internalCall)
+                // Checa a instância local
+                if (target is Component c && c.TryGetComponent<AnimaTweenInstance>(out var instance))
                 {
-                    Debug.Log($"AnimaTween: Tween for '{propertyName}' of {target} was completed manually.");
-                } 
-                GetRunner().StopCoroutine(tweenInfo.Coroutine);
-                
-                // Set final value for property tweens (timers don't have a ToValue)
-                if (endState == EndState.End && tweenInfo.ToValue != null) 
-                {
-                    tweenInfo.SetValue(tweenInfo.ToValue);
+                    instance.activeTweens.Keys.ToList().ForEach(k => target.AComplete(k, withCallback, endState));
                 }
-                else if (endState == EndState.Start && tweenInfo.StartValue != null)
+                // Checa o runner global
+                if (_globalRunner != null)
                 {
-                    tweenInfo.SetValue(tweenInfo.StartValue);
+                    _globalRunner.unhostedTweens.Keys.Where(k => k.Item1 == target).ToList()
+                        .ForEach(k => target.AComplete(k.Item2, withCallback, endState));
                 }
-                
-                if (withCallback)
+                return;
+            }
+            // Tenta encontrar na instância local
+            if (target is Component comp && comp.TryGetComponent<AnimaTweenInstance>(out var localInstance))
+            {
+                if (localInstance.activeTweens.TryGetValue(propertyName, out TweenInfo tweenInfo))
                 {
-                    tweenInfo.OnComplete?.Invoke();
+                    localInstance.StopCoroutine(tweenInfo.Coroutine);
+                    if (endState == EndState.End && tweenInfo.ToValue != null) tweenInfo.SetValue(tweenInfo.ToValue);
+                    else if (endState == EndState.Start && tweenInfo.StartValue != null) tweenInfo.SetValue(tweenInfo.StartValue);
+                    if (withCallback) tweenInfo.OnComplete?.Invoke();
+                    localInstance.activeTweens.Remove(propertyName);
+                    localInstance.MarkAsDirty();
+                    return; // Encontrou e completou, pode sair.
                 }
-                
-                _activeTweens.Remove(key);
+            }
+            
+            // Se não encontrou no local, tenta no runner global
+            if (_globalRunner != null)
+            {
+                var key = new Tuple<object, string>(target, propertyName);
+                if (_globalRunner.unhostedTweens.TryGetValue(key, out TweenInfo tweenInfo))
+                {
+                    _globalRunner.StopCoroutine(tweenInfo.Coroutine);
+                    if (endState == EndState.End && tweenInfo.ToValue != null) tweenInfo.SetValue(tweenInfo.ToValue);
+                    else if (endState == EndState.Start && tweenInfo.StartValue != null) tweenInfo.SetValue(tweenInfo.StartValue);
+                    if (withCallback) tweenInfo.OnComplete?.Invoke();
+                    _globalRunner.RemoveUnhostedTween(key);
+                }
             }
         }
 
@@ -297,196 +315,115 @@ namespace AnimaTween
                 Debug.LogError($"AnimaFade: Component '{target.GetType().Name}' not suportated to fade.");
             }
         }
-        
+
+        /// <summary>
+        /// Called by the Scene Watcher when a scene is unloaded.
+        /// Cleans up any tweens in the global runner whose targets were destroyed.
+        /// </summary>
+        public static void CleanUpGlobalRunner()
+        {
+            if (_globalRunner == null) return;
+            _globalRunner.CheckCleanup();
+        }
+
+
         // --- PRIVATE HELPER METHODS ---
         
-        private static AnimaTweenRunner GetRunner()
+        private static MonoBehaviour GetHostForTarget(object target)
         {
-            if (_runner == null)
+            // Case 1: The target is a standard Unity object.
+            if (target is Component c)
             {
-                _runner = GameObject.FindFirstObjectByType<AnimaTweenRunner>();
-                if (_runner == null)
+                if (c.TryGetComponent<AnimaTweenInstance>(out var instance)) return instance;
+                return c.gameObject.AddComponent<AnimaTweenInstance>();
+            }
+            if (target is GameObject go)
+            {
+                if (go.TryGetComponent<AnimaTweenInstance>(out var instance)) return instance;
+                return go.AddComponent<AnimaTweenInstance>();
+            }
+
+            // Case 2: The target is NOT a standard Unity object (e.g., a Material).
+            // We use the global fallback runner.
+            if (_globalRunner == null)
+            {
+                // Find it in the scene, or create it if it doesn't exist.
+                _globalRunner = GameObject.FindFirstObjectByType<AnimaTweenRunner>();
+                if (_globalRunner == null)
                 {
-                    GameObject runnerObject = new GameObject("AnimaTweenRunner (Auto-Generated)");
-                    _runner = runnerObject.AddComponent<AnimaTweenRunner>();
+                    var runnerObject = new GameObject("AnimaTweenRunner (Global)");
+                    _globalRunner = runnerObject.AddComponent<AnimaTweenRunner>();
                     UnityEngine.Object.DontDestroyOnLoad(runnerObject);
                 }
             }
-
-            CleanUpDestroyedTweens();
-            return _runner;
-        }
-
-        
-        /// <summary>
-        /// Helper function to get all active timers for a specific target object using LINQ.
-        /// </summary>
-        private static IEnumerable<KeyValuePair<Tuple<object, string>, TweenInfo>> GetAllTimersForTarget(object target)
-        {
-            return _activeTweens.Where(pair => pair.Key.Item1 == target && pair.Key.Item2.StartsWith("@timer_"));
+            return _globalRunner;
         }
         
-        /// <summary>
-        /// Scans the active tweens dictionary and removes any entries whose
-        /// target object has been destroyed.
-        /// </summary>
-        private static void CleanUpDestroyedTweens()
-        {
-            // Find all keys whose target (Item1) is a destroyed Unity object.
-            // The overloaded '==' operator for UnityEngine.Object returns true if it's destroyed.
-            var destroyedKeys = _activeTweens.Keys
-                .Where(key => key.Item1 is UnityEngine.Object obj && obj == null)
-                .ToList();
-
-            if (destroyedKeys.Count > 0)
-            {
-                // Remove all found "dead" tweens from the dictionary.
-                foreach (var key in destroyedKeys)
-                {
-                    _activeTweens.Remove(key);
-                }
-            }
-        }
-
         // O "Maestro" que gerencia a lógica de playback
-        private static IEnumerator TweenConductorCoroutine(object target, FieldInfo field, PropertyInfo prop, object startValue, object toValue, float duration, Easing easing, Playback playback, Action onComplete, Type propertyType)
+        private static IEnumerator TweenConductorCoroutine(MonoBehaviour host, string key, TweenInfo tweenInfo, float duration, Easing easing, Playback playback)
         {
             bool isLooping = playback == Playback.LoopForward || playback == Playback.LoopBackward || playback == Playback.LoopPingPong;
-            
             do
             {
-                // --- Animação FORWARD ---
+                // --- FORWARD Animation ---
                 if (playback == Playback.Forward || playback == Playback.PingPong || playback == Playback.LoopForward || playback == Playback.LoopPingPong)
                 {
-                    yield return SelectAnimationCoroutine(target, field, prop, startValue, toValue, duration, easing, propertyType);
+                    yield return AnimaTweenCoroutines.Animate(tweenInfo, duration, easing, isFrom: false);
                 }
 
-                // --- Animação BACKWARD ---
+                // --- BACKWARD Animation ---
                 if (playback == Playback.Backward || playback == Playback.PingPong || playback == Playback.LoopBackward || playback == Playback.LoopPingPong)
                 {
-                    // No caso de PingPong, o "toValue" da ida se torna o "startValue" da volta.
-                    yield return SelectAnimationCoroutine(target, field, prop, toValue, startValue, duration, easing, propertyType);
+                    yield return AnimaTweenCoroutines.Animate(tweenInfo, duration, easing, isFrom: true);
                 }
-                
             } while (isLooping);
 
-            // --- FINALIZAÇÃO ---
-            // Este código só é alcançado quando o tween termina (não está em loop).
-            var key = new Tuple<object, string>(target, field != null ? field.Name : prop.Name);
-            _activeTweens.Remove(key);
-            onComplete?.Invoke();
+            // --- Natural Completion ---
+            // This code is only reached when a non-looping tween finishes its duration.
+            if (host is AnimaTweenInstance instance)
+            {
+                instance.activeTweens.Remove(key);
+                instance.MarkAsDirty();
+            }
+            else if (host is AnimaTweenRunner runner)
+            {
+                var runnerKey = new Tuple<object, string>(tweenInfo.Target, key);
+                runner.RemoveUnhostedTween(runnerKey);
+            }
+            tweenInfo.OnComplete?.Invoke();
         }
-        
-        // Coroutine for handling timeouts and intervals.
-        private static IEnumerator TimerCoroutine(Tuple<object, string> key, float time, Action callback, bool repeat)
+
+        /// <summary>
+        /// The coroutine for handling timeouts and intervals.
+        /// </summary>
+        private static IEnumerator TimerCoroutine(MonoBehaviour host, object key, TweenInfo tweenInfo, float time, bool repeat)
         {
             if (repeat)
             {
                 while (true)
                 {
                     yield return new WaitForSeconds(time);
-                    if (AnimaTweenCoroutines.IsTargetDestroyed(key.Item1))
-                    {
-                        _activeTweens.Remove(key); // Limpa a chave do timer
-                        yield break;
-                    }
-                    callback?.Invoke();
+                    // Repeating timers do not remove themselves, they must be stopped manually.
+                    tweenInfo.OnComplete?.Invoke();
                 }
             }
             else
             {
                 yield return new WaitForSeconds(time);
-                _activeTweens.Remove(key);
-                if (AnimaTweenCoroutines.IsTargetDestroyed(key.Item1)) yield break;
-                callback?.Invoke();
-            }
-        }
-
-        
-       private static IEnumerator SelectAnimationCoroutine(object target, FieldInfo field, PropertyInfo prop, object from, object to, float duration, Easing easing, Type propertyType)
-        {
-            // Helper function to log a clear type mismatch error.
-            void LogTypeError()
-            {
-                string propertyName = prop?.Name ?? field?.Name;
-                Debug.LogError($"AnimaTween: Type mismatch on '{propertyName}'. Property is of type '{propertyType.Name}' but the provided 'toValue' is of type '{to.GetType().Name}'.");
-            }
-
-            if (propertyType == typeof(int) || propertyType == typeof(float))
-            {
-                // For numeric types, we try to convert. If it fails, it's a type mismatch.
-                try
-                {
-                    float fromValue = Convert.ToSingle(from);
-                    float toValue = Convert.ToSingle(to);
-                    return AnimaTweenCoroutines.AnimateNumeric(target, field, prop, propertyType, fromValue, toValue, duration, easing);
-                }
-                catch (Exception)
-                {
-                    LogTypeError();
-                    return null;
-                }
-            }
-            if (propertyType == typeof(Vector2))
-            {
-                if (!(to is Vector2)) { LogTypeError(); return null; }
-                return AnimaTweenCoroutines.AnimateVector2(target, field, prop, (Vector2)from, (Vector2)to, duration, easing);
-            }
-            if (propertyType == typeof(Vector3))
-            {
-                if (!(to is Vector3)) { LogTypeError(); return null; }
-                return AnimaTweenCoroutines.AnimateVector3(target, field, prop, (Vector3)from, (Vector3)to, duration, easing);
-            }
-            if (propertyType == typeof(Color))
-            {
-                if (!(to is Color)) { LogTypeError(); return null; }
-                return AnimaTweenCoroutines.AnimateColor(target, field, prop, (Color)from, (Color)to, duration, easing);
-            }
-            if (propertyType == typeof(Quaternion))
-            {
-                if (!(to is Quaternion)) { LogTypeError(); return null; }
-                return AnimaTweenCoroutines.AnimateQuaternion(target, field, prop, (Quaternion)from, (Quaternion)to, duration, easing);
-            }
-            if (propertyType == typeof(string))
-            {
-                if (!(to is string endString)) { LogTypeError(); return null; }
                 
-                string startString = (string)from ?? "";
-
-                if (endString.StartsWith(startString) || startString.StartsWith(endString))
+                // --- Natural Completion for a one-shot timer ---
+                if (host is AnimaTweenInstance instance && key is string stringKey)
                 {
-                    // Grow or Shrink
-                    return AnimaTweenCoroutines.AnimateString(target, field, prop, startString, endString, duration, easing);
+                    instance.activeTweens.Remove(stringKey);
+                    instance.MarkAsDirty();
                 }
-                else 
+                else if (host is AnimaTweenRunner runner && key is System.Tuple<object, string> tupleKey)
                 {
-                    // Replace: shrink then grow.
-                    return AnimateStringReplace(target, field, prop, startString, endString, duration, easing);
+                    runner.RemoveUnhostedTween(tupleKey);
                 }
-            }
 
-            // This final log catches any property types that are not supported by AnimaTween.
-            Debug.LogError($"AnimaTween: Unsupported property type for tweening: {propertyType.Name}");
-            return null;
-        }
-        
-        // Corrotina especial para lidar com a substituição de strings (encadeamento)
-        private static IEnumerator AnimateStringReplace(object target, FieldInfo field, PropertyInfo prop, string startString, string endString, float duration, Easing easing)
-        {
-            int prefixLength = 0;
-            while (prefixLength < startString.Length && prefixLength < endString.Length && startString[prefixLength] == endString[prefixLength])
-            {
-                prefixLength++;
+                tweenInfo.OnComplete?.Invoke();
             }
-            string commonPrefix = startString.Substring(0, prefixLength);
-        
-            float shrinkDuration = duration * 0.5f;
-            float growDuration = duration * 0.5f;
-
-            // Shrink
-            yield return AnimaTweenCoroutines.AnimateString(target, field, prop, startString, commonPrefix, shrinkDuration, easing);
-            // Grow
-            yield return AnimaTweenCoroutines.AnimateString(target, field, prop, commonPrefix, endString, growDuration, easing);
         }
         
         // Helper para animação de caminhos (inalterado)
