@@ -78,7 +78,7 @@ The most versatile function, capable of animating any public property or field o
 
 ```csharp
 Target.ATween(string propertyName, object toValue, float duration,
-           Easing easing = Easing.Linear, Playback playback = Playback.Forward, Action onComplete = null)
+           Easing easing = Easing.Linear, Playback playback = Playback.Forward, Action onComplete = null, object toValue=null)
 ```
 
 #### Shortcut Function
@@ -87,7 +87,7 @@ A pre-configured function for a common task.
 
 ```csharp
 // Animates the transparency (alpha) of common visual components.
-Component.AFade(float toAlpha, float duration, Easing easing = Easing.Linear, Action onComplete = null)
+Component.AFade(float duration, Easing easing = Easing.Linear, Action onComplete = null, Playback playback = Playback.Forward)
 ```
 
 #### Timer Functions ⏰
@@ -187,7 +187,7 @@ public Transform playerTransform;
 
 void Start() {
     Vector3 targetPosition = new Vector3(10, 0, 0);
-    playerTransform.AnimaTween("position", targetPosition, 2.0f, Easing.OutBack);
+    playerTransform.ATween("position", targetPosition, 2.0f, Easing.OutBack);
 }
 ```
 
@@ -198,7 +198,7 @@ public Transform warningIcon;
 
 void Start() {
     // The icon will continuously scale up and down.
-    warningIcon.AnimaTween("localScale", Vector3.one * 1.2f, 0.7f, Easing.InOutSine, Playback.LoopPingPong);
+    warningIcon.ATween("localScale", Vector3.one * 1.2f, 0.7f, Easing.InOutSine, Playback.LoopPingPong);
 }
 ```
 
@@ -208,7 +208,7 @@ void Start() {
 public Image myImage;
 
 void HideImage() {
-    myImage.AnimaFade(0f, 1.5f, Easing.OutQuad, () => {
+    myImage.AFade(Easing.OutQuad, () => {
         // This code will be executed when the fade completes.
         myImage.gameObject.SetActive(false);
     });
@@ -224,7 +224,7 @@ public int currentScore = 0;
 void AddPoints(int pointsToAdd) {
     int newScore = currentScore + pointsToAdd;
     // Animate the "invisible" 'currentScore' value
-    this.AnimaTween(nameof(currentScore), newScore, 1.0f, Easing.OutCubic, onComplete: UpdateScoreText);
+    this.ATween(nameof(currentScore), newScore, 1.0f, Easing.OutCubic, onComplete: UpdateScoreText);
 }
 
 void UpdateScoreText() {
@@ -236,7 +236,7 @@ void UpdateScoreText() {
 
 ```csharp
 // At some point, the player enters a cutscene and needs to stop moving.
-playerTransform.Complete("position");
+playerTransform.AComplete("position");
 ```
 
 **6. Simple Timeout**
@@ -277,7 +277,7 @@ This example starts a repeating interval and then schedules a separate timeout t
 void Start()
 {
     // Start the repeating interval.
-    this.ATimeout(1.0f, () =>
+    this.ATimeout(() =>
     {
         Instantiate(prefabToSpawn, Vector3.zero, Quaternion.identity);
     }, repeat: true);

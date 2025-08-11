@@ -74,7 +74,9 @@ namespace AnimaTween
         
         // --- PUBLIC API METHODS ---
 
-        public static void ATween(this object target, string propertyName, object toValue, float duration, Easing easing = Easing.Linear, Playback playback = Playback.Forward, Action onComplete = null)
+        public static void ATween(this object target, string propertyName, object toValue, float duration, 
+            Easing easing = Easing.Linear,  Action onComplete = null, Playback playback = Playback.Forward,
+            object fromValue = null)
         {
             // Stops any previous tween on the same property
             target.AComplete(propertyName, internalCall: true);
@@ -82,11 +84,22 @@ namespace AnimaTween
             FieldInfo fieldInfo = target.GetType().GetField(propertyName, BindingFlags.Public | BindingFlags.Instance);
             PropertyInfo propertyInfo = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
             
+            
+            
             if (fieldInfo == null && propertyInfo == null)
             {
                 Debug.LogError($"AnimaTween: Propriedade ou Campo '{propertyName}' não encontrado ou não é público em '{target.GetType().Name}'.");
                 return;
             }
+            object startValue = fieldInfo != null ? fieldInfo.GetValue(target) : propertyInfo.GetValue(target);
+            if (fromValue!= null && startValue.GetType() == fromValue.GetType())
+            {
+                startValue = fromValue;
+                if (fieldInfo != null) fieldInfo.SetValue(target, startValue);
+                else propertyInfo.SetValue(target, startValue);
+            }
+            
+            
 
             // Logic for animating paths (waypoints)
             if (toValue is IEnumerable path && !(toValue is string))
@@ -101,7 +114,7 @@ namespace AnimaTween
             }
 
             Type propertyType = fieldInfo != null ? fieldInfo.FieldType : propertyInfo.PropertyType;
-            object startValue = fieldInfo != null ? fieldInfo.GetValue(target) : propertyInfo.GetValue(target);
+
             var key = new Tuple<object, string>(target, propertyName);
 
             // Starts the "maestro" coroutine that will manage playback and finalization.
@@ -209,27 +222,28 @@ namespace AnimaTween
             }
         }
         
-        public static void AFade(this Component target, float toAlpha, float duration, Easing easing = Easing.Linear, Action onComplete = null,Playback playback = Playback.Forward)
+        public static void AFade(this Component target, float duration, Easing easing = Easing.Linear, 
+            Action onComplete = null, float toAlpha=0)
         {
             if (target is Graphic graphic)
             {
                 Color targetColor = graphic.color;
                 targetColor.a = toAlpha;
-                graphic.ATween("color", targetColor, duration, easing, playback, onComplete);
+                graphic.ATween("color", targetColor, duration, easing, onComplete);
             }
             else if (target is CanvasGroup canvasGroup)
             {
-                canvasGroup.ATween("alpha", toAlpha, duration, easing, playback, onComplete);
+                canvasGroup.ATween("alpha", toAlpha, duration, easing, onComplete);
             }
             else if (target is SpriteRenderer sprite)
             {
                 Color targetColor = sprite.color;
                 targetColor.a = toAlpha;
-                sprite.ATween("color", targetColor, duration, easing, playback, onComplete);
+                sprite.ATween("color", targetColor, duration, easing, onComplete);
             }
             else
             {
-                Debug.LogError($"AnimaFade: Componente '{target.GetType().Name}' não suportado para fade.");
+                Debug.LogError($"AnimaFade: Component '{target.GetType().Name}' not suportated to fade.");
             }
         }
         
@@ -311,34 +325,56 @@ namespace AnimaTween
             }
         }
 
-        // Seleciona e retorna a corrotina de animação correta da classe auxiliar
-        private static IEnumerator SelectAnimationCoroutine(object target, FieldInfo field, PropertyInfo prop, object from, object to, float duration, Easing easing, Type propertyType)
+        
+       private static IEnumerator SelectAnimationCoroutine(object target, FieldInfo field, PropertyInfo prop, object from, object to, float duration, Easing easing, Type propertyType)
         {
+            // Helper function to log a clear type mismatch error.
+            void LogTypeError()
+            {
+                string propertyName = prop?.Name ?? field?.Name;
+                Debug.LogError($"AnimaTween: Type mismatch on '{propertyName}'. Property is of type '{propertyType.Name}' but the provided 'toValue' is of type '{to.GetType().Name}'.");
+            }
+
             if (propertyType == typeof(int) || propertyType == typeof(float))
             {
-                return AnimaTweenCoroutines.AnimateNumeric(target, field, prop, propertyType, Convert.ToSingle(from), Convert.ToSingle(to), duration, easing);
+                // For numeric types, we try to convert. If it fails, it's a type mismatch.
+                try
+                {
+                    float fromValue = Convert.ToSingle(from);
+                    float toValue = Convert.ToSingle(to);
+                    return AnimaTweenCoroutines.AnimateNumeric(target, field, prop, propertyType, fromValue, toValue, duration, easing);
+                }
+                catch (Exception)
+                {
+                    LogTypeError();
+                    return null;
+                }
             }
             if (propertyType == typeof(Vector2))
             {
+                if (!(to is Vector2)) { LogTypeError(); return null; }
                 return AnimaTweenCoroutines.AnimateVector2(target, field, prop, (Vector2)from, (Vector2)to, duration, easing);
             }
             if (propertyType == typeof(Vector3))
             {
+                if (!(to is Vector3)) { LogTypeError(); return null; }
                 return AnimaTweenCoroutines.AnimateVector3(target, field, prop, (Vector3)from, (Vector3)to, duration, easing);
             }
             if (propertyType == typeof(Color))
             {
+                if (!(to is Color)) { LogTypeError(); return null; }
                 return AnimaTweenCoroutines.AnimateColor(target, field, prop, (Color)from, (Color)to, duration, easing);
             }
             if (propertyType == typeof(Quaternion))
             {
+                if (!(to is Quaternion)) { LogTypeError(); return null; }
                 return AnimaTweenCoroutines.AnimateQuaternion(target, field, prop, (Quaternion)from, (Quaternion)to, duration, easing);
             }
             if (propertyType == typeof(string))
             {
-                 // Lógica especial para strings (encadeamento para "replace")
+                if (!(to is string endString)) { LogTypeError(); return null; }
+                
                 string startString = (string)from ?? "";
-                string endString = (string)to ?? "";
 
                 if (endString.StartsWith(startString) || startString.StartsWith(endString))
                 {
@@ -347,12 +383,13 @@ namespace AnimaTween
                 }
                 else 
                 {
-                    // Replace: shrink then grow. This needs a special conductor.
+                    // Replace: shrink then grow.
                     return AnimateStringReplace(target, field, prop, startString, endString, duration, easing);
                 }
             }
 
-            Debug.LogError($"AnimaTween: Tipo de propriedade não suportado: {propertyType.Name}");
+            // This final log catches any property types that are not supported by AnimaTween.
+            Debug.LogError($"AnimaTween: Unsupported property type for tweening: {propertyType.Name}");
             return null;
         }
         
@@ -387,7 +424,7 @@ namespace AnimaTween
             Action nextAction = () => {
                 AnimatePath(target, propertyName, waypoints, segmentDuration, easing, playback, onComplete);
             };
-            target.ATween(propertyName, nextWaypoint, segmentDuration, easing, playback, nextAction);
+            target.ATween(propertyName, nextWaypoint, segmentDuration, easing, nextAction, playback);
         }
     }
 }
