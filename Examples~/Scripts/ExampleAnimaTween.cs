@@ -135,8 +135,8 @@ namespace AnimaTween
 
         void MusicalChange()
         {
-            music.ATween("pitch", 1.1f, 3.0f,
-                Easing.OutInElastic, fromValue: 0.9, onComplete: () =>
+            music.ATween("pitch", 1.2f, 3.0f,
+                Easing.OutInElastic, fromValue: 0.8, onComplete: () =>
                 {
                     // 12. Return pitch to normal and lower the volume slightly.
                     music.ATween("pitch", 1.0f, 0.5f);
@@ -171,11 +171,12 @@ namespace AnimaTween
             cube.ATween("localScale", new Vector3(0.5f, 1.5f, 0.8f), 2f, Easing.InOutSine,
                 playback: Playback.LoopPingPong);
 
-
+            
             textArea1.ATween("text", "Control Tweens...", 2.0f, Easing.Linear);
             // 17. After a few seconds, stop the physics and write the final message.
             this.ATimeout(3.0f, () =>
             {
+                textArea2.AFade(1f);
                 textArea1.ATween("text", "Control Tweens... Control the GAME!", 2.0f, Easing.Linear);
                 // Stop physics timers and scale animation.
                 this.ACompleteTimers();

@@ -248,7 +248,25 @@ namespace AnimaTween
         }
         
         // --- PRIVATE HELPER METHODS ---
+        
+        // Adicione esta nova função de limpeza
+        /// <summary>
+        /// Remove any tweens from the dictionary whose targets have been destroyed.
+        /// </summary>
+        public static void CleanUpDestroyedTweens()
+        {
+            // Encontra todas as chaves cujos alvos foram destruídos
+            var destroyedKeys = _activeTweens.Keys
+                .Where(key => key.Item1 is UnityEngine.Object obj && obj == null)
+                .ToList();
 
+            foreach (var key in destroyedKeys)
+            {
+                _activeTweens.Remove(key);
+            }
+        }
+
+        // Modifique o GetRunner para chamar a limpeza de vez em quando
         private static AnimaTweenRunner GetRunner()
         {
             if (_runner == null)
@@ -261,8 +279,10 @@ namespace AnimaTween
                     UnityEngine.Object.DontDestroyOnLoad(runnerObject);
                 }
             }
+
             return _runner;
         }
+
         
         /// <summary>
         /// Helper function to get all active timers for a specific target object using LINQ.
@@ -306,21 +326,22 @@ namespace AnimaTween
         {
             if (repeat)
             {
-                // For an interval, loop forever until cancelled by AComplete or ACompleteTimers.
                 while (true)
                 {
                     yield return new WaitForSeconds(time);
+                    if (AnimaTweenCoroutines.IsTargetDestroyed(key.Item1))
+                    {
+                        _activeTweens.Remove(key); // Limpa a chave do timer
+                        yield break;
+                    }
                     callback?.Invoke();
                 }
             }
             else
             {
-                // For a single timeout, wait, then execute and remove itself.
                 yield return new WaitForSeconds(time);
-                
-                // Remove self from the active tweens dictionary BEFORE invoking the callback.
-                // This prevents issues if the callback starts a new tween/timer on the same object.
                 _activeTweens.Remove(key);
+                if (AnimaTweenCoroutines.IsTargetDestroyed(key.Item1)) yield break;
                 callback?.Invoke();
             }
         }
