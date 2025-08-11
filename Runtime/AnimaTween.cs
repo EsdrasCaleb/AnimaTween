@@ -128,7 +128,6 @@ namespace AnimaTween
                 FieldInfo = fieldInfo,
                 PropertyInfo = propertyInfo
             };
-            Debug.Log($"From {startValue} to {toValue}");
             tweenInfo.Coroutine = host.StartCoroutine(
                 TweenConductorCoroutine(host, propertyName, tweenInfo, duration, easing, playback)
             );
