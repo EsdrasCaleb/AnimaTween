@@ -66,10 +66,17 @@ namespace AnimaTween
         LoopPingPong,
     }
 
+    public enum EndState
+    {
+        Start,
+        Middle,
+        End
+    }
+
     // --- THE MAIN EXTENSION CLASS ---
     public static class AnimaTweenExtensions
     {
-        private static readonly Dictionary<Tuple<object, string>, Coroutine> _activeTweens = new Dictionary<Tuple<object, string>, Coroutine>();
+        private static readonly Dictionary<Tuple<object, string>, TweenInfo> _activeTweens = new Dictionary<Tuple<object, string>, TweenInfo>();
         private static AnimaTweenRunner _runner;
         
         // --- PUBLIC API METHODS ---
@@ -114,8 +121,7 @@ namespace AnimaTween
             }
 
             Type propertyType = fieldInfo != null ? fieldInfo.FieldType : propertyInfo.PropertyType;
-
-            var key = new Tuple<object, string>(target, propertyName);
+            
 
             // Starts the "maestro" coroutine that will manage playback and finalization.
             Coroutine newCoroutine = GetRunner().StartCoroutine(
@@ -124,7 +130,18 @@ namespace AnimaTween
 
             if (newCoroutine != null)
             {
-                _activeTweens[key] = newCoroutine;
+                var key = new Tuple<object, string>(target, propertyName);
+                var tweenInfo = new TweenInfo
+                {
+                    Target = target,
+                    OnComplete = onComplete,
+                    StartValue = startValue,
+                    ToValue = toValue,
+                    FieldInfo = fieldInfo,
+                    PropertyInfo = propertyInfo,
+                    Coroutine =newCoroutine
+                };
+                _activeTweens[key] = tweenInfo;
             }
         }
         
@@ -142,13 +159,22 @@ namespace AnimaTween
 
             string timerKey = $"@timer_{nextId}";
             var key = new Tuple<object, string>(target, timerKey);
-
+            
             Coroutine newCoroutine = GetRunner().StartCoroutine(
                 TimerCoroutine(key, time, callback, repeat)
             );
+            if (newCoroutine != null)
+            {
+                var tweenInfo = new TweenInfo
+                {
+                    Target = target,
+                    OnComplete = callback,
+                    Coroutine = newCoroutine
+                };
 
-            _activeTweens[key] = newCoroutine;
-            
+                _activeTweens[key] = tweenInfo;
+            }
+
             // Return the new ID so the user can store it and cancel it later.
             return nextId;
         }
@@ -158,19 +184,19 @@ namespace AnimaTween
         /// </summary>
         /// <param name="target">The object whose timers will be stopped.</param>
         /// <param name="timerId">The specific ID of the timer to stop. If omitted (-1), all timers on the object will be stopped.</param>
-        public static void ACompleteTimer(this object target, int timerId = -1)
+        public static void ACompleteTimer(this object target, int timerId = -1, bool withFinalCallback = true)
         {
             // Case 1: Stop all timers for the target (when timerId is the default -1).
             if (timerId == -1)
             {
-                target.ACompleteTimers();
+                target.ACompleteTimers(withFinalCallback);
                 return;
             }
             
             // Case 2: Stop a specific timer by its ID.
             // We leverage the general-purpose AComplete function, which is perfectly DRY.
             string timerKeyToComplete = $"@timer_{timerId}";
-            target.AComplete(timerKeyToComplete, true); // internalCall = true
+            target.AComplete(timerKeyToComplete, withFinalCallback,EndState.Middle); // internalCall = true
         }
 
 
@@ -179,47 +205,72 @@ namespace AnimaTween
         /// This is now syntactic sugar for calling ACompleteTimer without a specific ID.
         /// </summary>
         /// <param name="target">The object whose timers will be stopped.</param>
-        public static void ACompleteTimers(this object target)
+        public static void ACompleteTimers(this object target, bool withFinalCallback = true )
         {
             var timersToComplete = GetAllTimersForTarget(target).ToList();
             
             foreach (var pair in timersToComplete)
             {
-                GetRunner().StopCoroutine(pair.Value);
-                _activeTweens.Remove(pair.Key);
+                target.AComplete(pair.Key.Item2,withFinalCallback,EndState.Middle);
             }
+        }
+
+
+        public static void AComplete(this object target, bool withCallback = true, 
+            EndState endState=EndState.End)
+        {
+            _activeTweens.Keys.Where(k => k.Item1 == target).ToList()
+                .ForEach(k => target.AComplete(k.Item2, withCallback,endState));
         }
         
         /// <summary>
-        /// Stops ALL active animations and timers on a specific object.
+        /// Completes a tween, jumping to its final state and executing the OnComplete callback.
         /// </summary>
-        public static void AComplete(this object target)
+        public static void AComplete(this object target, string propertyName, bool withCallback = true,
+             EndState endState=EndState.End,bool internalCall = false)
         {
-            // Find all keys associated with the target object using LINQ.
-            // We convert it to a List to avoid issues with modifying the collection while iterating.
-            _activeTweens.Keys
-                .Where(key => key.Item1 == target)
-                // Call the specific AComplete method for each found key
-                .ToList().ForEach(key=>target.AComplete(key.Item2, internalCall: true));
+            var key = new Tuple<object, string>(target, propertyName);
+            if (_activeTweens.TryGetValue(key, out TweenInfo tweenInfo))
+            {
+                if (!internalCall)
+                {
+                    Debug.Log($"AnimaTween: Tween for '{propertyName}' of {target} was completed manually.");
+                } 
+                GetRunner().StopCoroutine(tweenInfo.Coroutine);
+                
+                // Set final value for property tweens (timers don't have a ToValue)
+                if (endState == EndState.End && tweenInfo.ToValue != null) 
+                {
+                    tweenInfo.SetValue(tweenInfo.ToValue);
+                }
+                else if (endState == EndState.Start && tweenInfo.StartValue != null)
+                {
+                    tweenInfo.SetValue(tweenInfo.StartValue);
+                }
+                
+                if (withCallback)
+                {
+                    tweenInfo.OnComplete?.Invoke();
+                }
+                
+                _activeTweens.Remove(key);
+            }
         }
 
         /// <summary>
-        /// Stops a specific animation or timer on an object, identified by its property name.
+        /// Stops a tween immediately in its current state. No callbacks are invoked.
         /// </summary>
-        public static void AComplete(this object target, string propertyName, bool internalCall = false)
+        public static void AStop(this object target, string propertyName = null, bool withCallback = false)
         {
-            var key = new Tuple<object, string>(target, propertyName);
-            if (_activeTweens.TryGetValue(key, out Coroutine existing))
-            {
-                if (!internalCall) 
-                {
-                    Debug.Log($"AnimaTween: Tween for '{propertyName}' was completed manually.");
-                }
-        
-                // This is now the single source of truth for stopping and removing a tween.
-                GetRunner().StopCoroutine(existing);
-                _activeTweens.Remove(key);
-            }
+            target.AComplete(propertyName, withCallback,EndState.Middle);
+        }
+
+        /// <summary>
+        /// Stops a tween and reverts its target property to the value it had when the tween started.
+        /// </summary>
+        public static void ACancel(this object target, string propertyName = null, bool withCallback = false)
+        {
+            target.AComplete(propertyName, withCallback,EndState.Start);
         }
         
         public static void AFade(this Component target, float duration, Easing easing = Easing.Linear, 
@@ -249,22 +300,6 @@ namespace AnimaTween
         
         // --- PRIVATE HELPER METHODS ---
         
-        // Adicione esta nova função de limpeza
-        /// <summary>
-        /// Remove any tweens from the dictionary whose targets have been destroyed.
-        /// </summary>
-        public static void CleanUpDestroyedTweens()
-        {
-            // Encontra todas as chaves cujos alvos foram destruídos
-            var destroyedKeys = _activeTweens.Keys
-                .Where(key => key.Item1 is UnityEngine.Object obj && obj == null)
-                .ToList();
-
-            foreach (var key in destroyedKeys)
-            {
-                _activeTweens.Remove(key);
-            }
-        }
 
         // Modifique o GetRunner para chamar a limpeza de vez em quando
         private static AnimaTweenRunner GetRunner()
@@ -287,7 +322,7 @@ namespace AnimaTween
         /// <summary>
         /// Helper function to get all active timers for a specific target object using LINQ.
         /// </summary>
-        private static IEnumerable<KeyValuePair<Tuple<object, string>, Coroutine>> GetAllTimersForTarget(object target)
+        private static IEnumerable<KeyValuePair<Tuple<object, string>, TweenInfo>> GetAllTimersForTarget(object target)
         {
             return _activeTweens.Where(pair => pair.Key.Item1 == target && pair.Key.Item2.StartsWith("@timer_"));
         }

@@ -103,24 +103,69 @@ Execute code after a delay, with an option to repeat.
 Target.ATimeout(float time, Action callback, bool repeat = false)
 ```
 
-#### Control Functions
+#### Control Functions 🎮
 
-Allow you to stop animations and timers in progress.
+You can control the lifecycle of your animations and timers after they've been started. This API is inspired by the clear and powerful controls found in professional tweening engines.
 
-```csharp
-// Stops ALL active animations and timers on an object.
-Target.AComplete()
-
-// Stops a specific animation on an object, identified by its property name.
-Target.AComplete(string propertyName)
-
-// Stops only the active timers on an object, leaving animations untouched.
-Target.ACompleteTimers()
-```
+| Function             | Description                                               | Final State        | Executes Callback?   |
+|:---------------------|:----------------------------------------------------------|:-------------------|:---------------------|
+| **`AComplete`**      | **Completes** the tween, jumping it to a final state.     | End or Start Value | **Yes** (by default) |
+| **`AStop`**          | **Stops** the tween immediately, freezing it in place.    | Current Value      | **No**               |
+| **`ACancel`**        | **Cancels** the tween, reverting it to its initial state. | Start Value        | **No**               |
+| **`ACompleteTimer`** | **Cancels** the timer, stoping its execution.             | -                  | **Yes** (by default)       |
 
 -----
 
 ### Parameters
+
+#### **`AComplete`**
+
+Completes one or all tweens on a target, jumping them to a specified end state and firing their callbacks.
+
+```csharp
+Target.AComplete(string propertyName = null, bool withCallback = true, EndState endState = EndState.End)
+```
+
+* `propertyName`: The specific tween to complete. If `null`, completes **all** tweens on the target.
+* `withCallback`: If `true` (the default), the tween's `onComplete` callback will be executed.
+* `endState`: Determines where the property jumps to. Use `EndState.End` (default) to jump to the `toValue` or `EndState.Start` to jump to the `fromValue`.
+
+-----
+
+#### **`AStop`**
+
+Stops one or all tweens on a target, leaving them in their current state.
+
+```csharp
+Target.AStop(string propertyName = null)
+```
+
+* `propertyName`: The specific tween to stop. If `null`, stops **all** tweens on the target.
+
+-----
+
+#### **`ACancel`**
+
+Cancels one or all tweens on a target, reverting them to their initial state.
+
+```csharp
+Target.ACancel(string propertyName = null)
+```
+
+* `propertyName`: The specific tween to cancel. If `null`, cancels **all** tweens on the target.
+
+-----
+
+#### **`ACompleteTimer`**
+
+Completes a specific timer or all timers on a target.
+
+```csharp
+Target.ACompleteTimer(int timerId = -1, bool withFinalCallback = true)
+```
+
+* `timerId`: The ID of the timer to complete (returned by `ATimeout`). If `-1` (the default), completes **all** timers on the target.
+* `withFinalCallback`: If `true` (the default), the timer's callback will be executed.
 
 #### For `ATween`
 
