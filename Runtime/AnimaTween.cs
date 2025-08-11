@@ -300,8 +300,6 @@ namespace AnimaTween
         
         // --- PRIVATE HELPER METHODS ---
         
-
-        // Modifique o GetRunner para chamar a limpeza de vez em quando
         private static AnimaTweenRunner GetRunner()
         {
             if (_runner == null)
@@ -315,6 +313,7 @@ namespace AnimaTween
                 }
             }
 
+            CleanUpDestroyedTweens();
             return _runner;
         }
 
@@ -325,6 +324,28 @@ namespace AnimaTween
         private static IEnumerable<KeyValuePair<Tuple<object, string>, TweenInfo>> GetAllTimersForTarget(object target)
         {
             return _activeTweens.Where(pair => pair.Key.Item1 == target && pair.Key.Item2.StartsWith("@timer_"));
+        }
+        
+        /// <summary>
+        /// Scans the active tweens dictionary and removes any entries whose
+        /// target object has been destroyed.
+        /// </summary>
+        private static void CleanUpDestroyedTweens()
+        {
+            // Find all keys whose target (Item1) is a destroyed Unity object.
+            // The overloaded '==' operator for UnityEngine.Object returns true if it's destroyed.
+            var destroyedKeys = _activeTweens.Keys
+                .Where(key => key.Item1 is UnityEngine.Object obj && obj == null)
+                .ToList();
+
+            if (destroyedKeys.Count > 0)
+            {
+                // Remove all found "dead" tweens from the dictionary.
+                foreach (var key in destroyedKeys)
+                {
+                    _activeTweens.Remove(key);
+                }
+            }
         }
 
         // O "Maestro" que gerencia a lógica de playback
