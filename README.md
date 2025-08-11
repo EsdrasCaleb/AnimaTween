@@ -3,6 +3,8 @@
 **AnimaTween** – The animation tween you see in any game engine.
 A simple and flexible way to animate fields and properties of your objects directly in Unity.
 
+Say goodbye to complex setups and hello to smooth, code-driven animation. The API design is heavily inspired by the beloved libraries of the Defold engine.
+
 ---
 
 ## 📦 Installation
@@ -37,7 +39,7 @@ public class GameManager : MonoBehaviour
     {
         // Animates the 'score' variable from 'playerData' to 1000 over 3 seconds.
         // When finished, calls the UpdateText function.
-        playerData.AnimaTween("score", 1000, 3.0f, onComplete: UpdateText);
+        playerData.ATween("score", 1000, 3.0f, onComplete: UpdateText);
     }
 
     void Update()
@@ -62,43 +64,61 @@ public class GameManager : MonoBehaviour
 * Executes an optional callback (`onComplete`) when the animation finishes.
 
 ---
+Of course. Here is the updated documentation, now including the new `ATimeout` and `ACompleteTimers` functions, along with a new section for usage examples.
+
+-----
+
 ## 📚 Documentation
 
 ### Functions
 
-#### Main Function
+#### Main Animation Function
 
 The most versatile function, capable of animating any public property or field of an object.
 
 ```csharp
-Target.AnimaTween(string propertyName, object toValue, float duration,
+Target.ATween(string propertyName, object toValue, float duration,
            Easing easing = Easing.Linear, Playback playback = Playback.Forward, Action onComplete = null)
 ```
 
 #### Shortcut Function
 
-Pre-configured functions for common tasks.
+A pre-configured function for a common task.
 
 ```csharp
 // Animates the transparency (alpha) of common visual components.
-Component.AnimaFade(float toAlpha, float duration, Easing easing = Easing.Linear, Action onComplete = null)
+Component.AFade(float toAlpha, float duration, Easing easing = Easing.Linear, Action onComplete = null)
+```
+
+#### Timer Functions ⏰
+
+Execute code after a delay, with an option to repeat.
+
+```csharp
+// Executes a callback after a delay. Can also be used to create a repeating interval.
+Target.ATimeout(float time, Action callback, bool repeat = false)
 ```
 
 #### Control Functions
 
-Allow you to stop animations in progress.
+Allow you to stop animations and timers in progress.
 
 ```csharp
-// Stops all active animations on an object.
-Target.Complete()
+// Stops ALL active animations and timers on an object.
+Target.AComplete()
 
 // Stops a specific animation on an object, identified by its property name.
-Target.Complete(string propertyName)
+Target.AComplete(string propertyName)
+
+// Stops only the active timers on an object, leaving animations untouched.
+Target.ACompleteTimers()
 ```
 
 -----
 
 ### Parameters
+
+#### For `ATween` & `AFade`
 
 | Parameter | Description |
 | :--- | :--- |
@@ -108,19 +128,28 @@ Target.Complete(string propertyName)
 | `duration` | The duration of the animation in seconds. |
 | `easing` | The animation's acceleration curve (see the list below). |
 | `playback` | The animation's playback mode (see the **Playback Modes** section). |
-| `onComplete` | An optional callback function that executes when the animation finishes (not called on loops). |
+| `onComplete` | An optional callback that executes when the animation finishes (not called on loops). |
+
+#### For `ATimeout`
+
+| Parameter | Description |
+| :--- | :--- |
+| `Target` | The object the timer is attached to. Used for cancellation. |
+| `time` | The delay in seconds before the callback executes. For intervals, this is the time between each execution. |
+| `callback` | The function to execute after the delay. |
+| `repeat` | If `true`, the timer will repeat indefinitely, creating an interval. Defaults to `false`. |
 
 -----
 
 ### Playback Modes
 
-The `playback` parameter defines how the animation behaves over time.
+The `playback` parameter defines how `ATween` behaves over time.
 
 | Mode | Behavior | Description |
 | :--- | :--- | :--- |
 | `Forward` | 🏃 A → B | **(Default)** Animates from the start value to the end value and stops. |
 | `Backward` | ◀️ B → A | Animates from the end value to the start value and stops. |
-| `PingPong` | 🏓 A → B → A | Animates from start to end, and then immediately animates back to the start, then stops. |
+| `PingPong` | 🏓 A → B → A | Animates from start to end, then immediately animates back to the start, then stops. |
 | `LoopForward` | 🔁 A → B, A → B... | Repeats the animation from start to end indefinitely. |
 | `LoopBackward` | 🔁 B → A, B → A... | Repeats the animation from end to start indefinitely. |
 | `LoopPingPong` | 🔄 A → B → A, A → B → A... | Repeats the "forward and back" animation indefinitely. Ideal for pulsing effects. |
@@ -148,7 +177,8 @@ See a visual representation of each easing curve here:
 
 -----
 
-### Usage Examples
+### 💻 Usage Examples
+
 
 **1. Move a `Transform` to a new position:**
 
@@ -207,6 +237,86 @@ void UpdateScoreText() {
 ```csharp
 // At some point, the player enters a cutscene and needs to stop moving.
 playerTransform.Complete("position");
+```
+
+**6. Simple Timeout**
+Run a piece of code once after 2.5 seconds.
+
+```csharp
+void Start()
+{
+    // 'this' refers to the current MonoBehaviour instance.
+    this.ATimeout(2.5f, () => 
+    {
+        Debug.Log("Timeout finished!");
+    });
+}
+```
+
+**7. Repeating Interval**
+Spawn a prefab every second, indefinitely.
+
+```csharp
+public GameObject prefabToSpawn;
+
+void Start()
+{
+    // Create an interval that fires every 1.0 second.
+    this.ATimeout(1.0f, () =>
+    {
+        Instantiate(prefabToSpawn, Vector3.zero, Quaternion.identity);
+        Debug.Log("Prefab spawned!");
+    }, repeat: true);
+}
+```
+
+**8. Stopping All Timers on an Object**
+This example starts a repeating interval and then schedules a separate timeout to stop **all** timers on that object after 5 seconds.
+
+```csharp
+void Start()
+{
+    // Start the repeating interval.
+    this.ATimeout(1.0f, () =>
+    {
+        Instantiate(prefabToSpawn, Vector3.zero, Quaternion.identity);
+    }, repeat: true);
+
+    // Schedule a one-shot timeout to stop all timers on this object later.
+    this.ATimeout(5.0f, () =>
+    {
+        Debug.Log("Stopping all repeating timers now.");
+        this.ACompleteTimers(); // This stops every timer on the object.
+    });
+}
+```
+
+**9. Stopping a Specific Timer**
+This example shows how to capture a timer's ID and stop only that specific timer, leaving other timers on the same object running.
+
+```csharp
+// Class variable to store the ID of the timer we want to control.
+private int _blinkingTimerId;
+
+void Start()
+{
+    // Start a repeating interval and STORE its returned ID.
+    _blinkingTimerId = this.ATimeout(0.5f, () =>
+    {
+        Debug.Log("Blink effect is running...");
+        // Code to make a sprite blink...
+    }, repeat: true);
+
+    // Start a second, different timer that will not be affected.
+    this.ATimeout(1.0f, () => Debug.Log("Health regen tick..."), repeat: true);
+
+    // After 4 seconds, stop ONLY the blinking timer using its stored ID.
+    this.ATimeout(4.0f, () =>
+    {
+        Debug.Log($"Stopping only the blink effect (ID: {_blinkingTimerId}).");
+        this.ACompleteTimer(_blinkingTimerId); // The other timer will keep running.
+    });
+}
 ```
 
 ## 📝 License

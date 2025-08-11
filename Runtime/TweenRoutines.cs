@@ -7,12 +7,12 @@ using System.Reflection;
 namespace AnimaTween
 {
     /// <summary>
-    /// Classe auxiliar interna que contém as corrotinas de animação puras.
-    /// Elas apenas lidam com a interpolação de valores ao longo do tempo.
+    /// Internal helper class that contains the pure animation coroutines.
+    /// They only handle the interpolation of values over time.
     /// </summary>
     internal static class AnimaTweenCoroutines
     {
-        // Corrotina genérica para tipos numéricos (float, int)
+        // Generic coroutine for numeric types (float, int)
         internal static IEnumerator AnimateNumeric(object target, FieldInfo field, PropertyInfo prop, Type originalType, float startValue, float toValue, float duration, Easing easing)
         {
             float elapsedTime = 0f;
@@ -35,7 +35,7 @@ namespace AnimaTween
             else prop.SetValue(target, finalValue);
         }
 
-        // Corrotina para Vector2
+        // Coroutine for Vector2
         internal static IEnumerator AnimateVector2(object target, FieldInfo field, PropertyInfo prop, Vector2 startValue, Vector2 toValue, float duration, Easing easing)
         {
             float elapsedTime = 0f;
@@ -53,7 +53,7 @@ namespace AnimaTween
             else prop.SetValue(target, toValue);
         }
 
-        // Corrotina para Vector3
+        // Coroutine for Vector3
         internal static IEnumerator AnimateVector3(object target, FieldInfo field, PropertyInfo prop, Vector3 startValue, Vector3 toValue, float duration, Easing easing)
         {
             float elapsedTime = 0f;
@@ -71,7 +71,7 @@ namespace AnimaTween
             else prop.SetValue(target, toValue);
         }
 
-        // Corrotina para Color
+        // Coroutine for Color
         internal static IEnumerator AnimateColor(object target, FieldInfo field, PropertyInfo prop, Color startValue, Color toValue, float duration, Easing easing)
         {
             float elapsedTime = 0f;
@@ -89,7 +89,7 @@ namespace AnimaTween
             else prop.SetValue(target, toValue);
         }
 
-        // Corrotina para Quaternion
+        // Coroutine for Quaternion
         internal static IEnumerator AnimateQuaternion(object target, FieldInfo field, PropertyInfo prop, Quaternion startValue, Quaternion toValue, float duration, Easing easing)
         {
             float elapsedTime = 0f;
@@ -107,7 +107,7 @@ namespace AnimaTween
             else prop.SetValue(target, toValue);
         }
 
-        // Corrotina para String (Typewriter)
+        // Coroutine for String (Typewriter)
         internal static IEnumerator AnimateString(object target, FieldInfo field, PropertyInfo prop, string startValue, string toValue, float duration, Easing easing)
         {
             int startLength = startValue.Length;
