@@ -173,7 +173,7 @@ OutQuad, OutQuart, OutQuint, OutSine
 ```
 
 See a visual representation of each easing curve here:
-➡️ **[Visual Easing Reference](https://easings.net/)** (an excellent visual resource for understanding each curve)
+➡️ **[Visual Easing Reference](https://defold.com/manuals/property-animation/#easing/)** (an excellent visual resource for understanding each curve)
 
 -----
 

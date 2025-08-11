@@ -209,23 +209,23 @@ namespace AnimaTween
             }
         }
         
-        public static void AFade(this Component target, float toAlpha, float duration, Easing easing = Easing.Linear, Action onComplete = null)
+        public static void AFade(this Component target, float toAlpha, float duration, Easing easing = Easing.Linear, Action onComplete = null,Playback playback = Playback.Forward)
         {
             if (target is Graphic graphic)
             {
                 Color targetColor = graphic.color;
                 targetColor.a = toAlpha;
-                graphic.ATween("color", targetColor, duration, easing, Playback.Forward, onComplete);
+                graphic.ATween("color", targetColor, duration, easing, playback, onComplete);
             }
             else if (target is CanvasGroup canvasGroup)
             {
-                canvasGroup.ATween("alpha", toAlpha, duration, easing, Playback.Forward, onComplete);
+                canvasGroup.ATween("alpha", toAlpha, duration, easing, playback, onComplete);
             }
             else if (target is SpriteRenderer sprite)
             {
                 Color targetColor = sprite.color;
                 targetColor.a = toAlpha;
-                sprite.ATween("color", targetColor, duration, easing, Playback.Forward, onComplete);
+                sprite.ATween("color", targetColor, duration, easing, playback, onComplete);
             }
             else
             {
@@ -239,7 +239,7 @@ namespace AnimaTween
         {
             if (_runner == null)
             {
-                _runner = GameObject.FindObjectOfType<AnimaTweenRunner>();
+                _runner = GameObject.FindFirstObjectByType<AnimaTweenRunner>();
                 if (_runner == null)
                 {
                     GameObject runnerObject = new GameObject("AnimaTweenRunner (Auto-Generated)");

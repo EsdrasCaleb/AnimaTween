@@ -20,6 +20,7 @@ namespace AnimaTween
             {
                 elapsedTime += Time.deltaTime;
                 float progress = EasingFunctions.GetEasedProgress(easing, Mathf.Clamp01(elapsedTime / duration));
+                
                 float currentValue = Mathf.Lerp(startValue, toValue, progress);
 
                 object valueToSet = (originalType == typeof(int)) ? (object)Mathf.RoundToInt(currentValue) : currentValue;
