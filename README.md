@@ -5,6 +5,8 @@ A simple and flexible way to animate fields and properties of your objects direc
 
 Say goodbye to complex setups and hello to smooth, code-driven animation. The API design is heavily inspired by the beloved libraries of the Defold engine.
 
+[![AnimaTween Showcase](Examples~/animatween.gif)](https://youtu.be/T7lrsy1T-Fs)
+
 ---
 
 ## 📦 Installation
@@ -14,7 +16,7 @@ Say goodbye to complex setups and hello to smooth, code-driven animation. The AP
 3. Paste the repository URL:
 
    ```
-   https://github.com/SEU_USUARIO/AnimaTween.git
+   https://github.com/EsdrasCaleb/AnimaTween
    ```
 4. Click **Add** to install.
 
@@ -77,8 +79,9 @@ Of course. Here is the updated documentation, now including the new `ATimeout` a
 The most versatile function, capable of animating any public property or field of an object.
 
 ```csharp
-Target.ATween(string propertyName, object toValue, float duration,
-           Easing easing = Easing.Linear, Playback playback = Playback.Forward, Action onComplete = null, object toValue=null)
+Target.ATween(string propertyName, object toValue, float duration, 
+           Easing easing = Easing.Linear, Action onComplete = null, 
+           Playback playback = Playback.Forward, object fromValue = null)
 ```
 
 #### Shortcut Function
@@ -87,7 +90,8 @@ A pre-configured function for a common task.
 
 ```csharp
 // Animates the transparency (alpha) of common visual components.
-Component.AFade(float duration, Easing easing = Easing.Linear, Action onComplete = null, Playback playback = Playback.Forward)
+Component.AFade(float duration, Easing easing = Easing.Linear, 
+             Action onComplete = null, float toAlpha = 0)
 ```
 
 #### Timer Functions ⏰
@@ -118,26 +122,28 @@ Target.ACompleteTimers()
 
 ### Parameters
 
-#### For `ATween` & `AFade`
+#### For `ATween`
 
 | Parameter | Description |
 | :--- | :--- |
 | `Target` | The object containing the field or property to animate. |
 | `propertyName` | The name of the field or property (as a string). |
-| `toValue` | The target value of the animation. Can be a single value or a collection (e.g., `List<Vector3>`) to create a path. |
+| `toValue` | The target value of the animation. Can be a single value or a collection for a path. |
 | `duration` | The duration of the animation in seconds. |
-| `easing` | The animation's acceleration curve (see the list below). |
-| `playback` | The animation's playback mode (see the **Playback Modes** section). |
+| `easing` | The animation's acceleration curve. |
 | `onComplete` | An optional callback that executes when the animation finishes (not called on loops). |
+| `playback` | The animation's playback mode (see the **Playback Modes** section). |
+| `fromValue` | **(Optional)** Forces the animation to start from this value instead of the property's current value. |
 
-#### For `ATimeout`
+#### For `AFade`
 
 | Parameter | Description |
 | :--- | :--- |
-| `Target` | The object the timer is attached to. Used for cancellation. |
-| `time` | The delay in seconds before the callback executes. For intervals, this is the time between each execution. |
-| `callback` | The function to execute after the delay. |
-| `repeat` | If `true`, the timer will repeat indefinitely, creating an interval. Defaults to `false`. |
+| `Target` | The visual component to fade (`Image`, `SpriteRenderer`, `CanvasGroup`). |
+| `duration` | The duration of the fade in seconds. |
+| `easing` | The animation's acceleration curve. |
+| `onComplete` | An optional callback that executes when the fade is finished. |
+| `toAlpha` | The target alpha (transparency) value. `0` is fully transparent, `1` is fully opaque. **Defaults to `0` (fade-out).** |
 
 -----
 
