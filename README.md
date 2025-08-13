@@ -73,7 +73,7 @@ public class GameManager : MonoBehaviour
 
 #### Main Animation Function
 
-A função mais versátil, capaz de animar qualquer propriedade ou campo público de um objeto.
+The most versatile function, capable of animating any property or public field of an object.
 
 ```csharp
 Target.ATween(string propertyName, object toValue, float duration, 
@@ -83,7 +83,7 @@ Target.ATween(string propertyName, object toValue, float duration,
 
 #### Shortcut Function
 
-Uma função pré-configurada para uma tarefa comum.
+A pre-configured function for a common task.
 
 ```csharp
 // Anima a transparência (alpha) de componentes visuais comuns.
@@ -93,7 +93,7 @@ Component.AFade(float duration, Easing easing = Easing.Linear,
 
 #### Timer Functions ⏰
 
-Execute código após um atraso, com a opção de repetir.
+Execute code after a delay, with the option to retry.
 
 ```csharp
 // Executa um callback após um atraso. Pode também ser usado para criar um intervalo repetido.
@@ -106,146 +106,145 @@ Target.ATimeout(float time, Action callback, bool repeat = false)
 
 #### `ATween`
 
-Esta é a função principal do AnimaTween. Aqui estão os detalhes de seus parâmetros:
+This is AnimaTween's main function. Here are the details of its parameters:
 
-* **`target`**: O objeto que contém o campo ou propriedade a ser animada.
+* **`Target`**: The object containing the field or property to be animated.
 
-* **`propertyName`**: O nome do campo ou propriedade (como uma string).
+* **`propertyName`**: The name of the field or property (as a string).
 
-* **`toValue`**: O valor de destino da animação. Este é um parâmetro versátil que aceita diferentes tipos de entrada.
+  * **`toValue`**: The animation's target value. This is a versatile parameter that accepts different input types.
 
-  \<details\>
-  \<summary\>\<strong\>▶️ Tipos de Valores Suportados\</strong\>\</summary\>
+    <details>
+    <summary><strong>▶️ Supported Value Types</strong></summary>
 
-  Você pode animar qualquer campo ou propriedade pública dos seguintes tipos:
+    You can animate any public field or property of the following types:
 
-   - **`float`**: Para valores numéricos únicos (ex: `alpha` de um CanvasGroup, velocidade).
-   - **`int`**: Para valores inteiros. A animação ocorrerá com arredondamento.
-   - **`Vector2`**: Para posições 2D, escalas, etc.
-   - **`Vector3`**: Para posições 3D, escalas, ângulos de Euler, etc.
-   - **`Color`**: Para animar cores de materiais, imagens, sprites, etc.
-   - **`Quaternion`**: Para rotações. Usa `Quaternion.Slerp` para uma interpolação suave.
-   - **`string`**: Cria um efeito de máquina de escrever (typewriter).
+    - **`float`**: For single numeric values (e.g., `alpha` of a CanvasGroup, velocity).
+      - **`int`**: For integer values. The animation will occur with rounding.
+      - **`Vector2`**: For 2D positions, scales, etc.
+      - **`Vector3`**: For 3D positions, scales, Euler angles, etc.
+      - **`Color`**: For animating colors of materials, images, sprites, etc.
+      - **`Quaternion`**: For rotations. Uses `Quaternion.Slerp` for smooth interpolation.
+    - **`string`**: Creates a typewriter effect.
 
-  \</details\>
+      </details>
 
-  \<details\>
-  \<summary\>\<strong\>▶️ Animação de Caminho (Waypoints)\</strong\>\</summary\>
+      <details>
+      <summary><strong>▶️ Path Animation (Waypoints)</strong></summary>
 
-  Em vez de um único valor, você pode fornecer uma coleção (`List<T>` ou `T[]`) de qualquer tipo suportado para criar uma animação de caminho. A `duration` será distribuída igualmente entre os segmentos do caminho.
+      Instead of a single value, you can provide a collection (List<T> or T[]) of any supported type to create a path animation. The duration will be distributed equally across the path segments.
 
-  **Exemplo:** Fazendo um objeto se mover através de três pontos.
+     **Example:** Making an object move through three points.
 
-  ```csharp
-  var path = new Vector3[]
-  {
-      new Vector3(5, 0, 0),
-      new Vector3(5, 5, 0),
-      new Vector3(0, 5, 0)
-  };
+      ```csharp
+      var path = new Vector3[]
+      {
+          new Vector3(5, 0, 0),
+          new Vector3(5, 5, 0),
+          new Vector3(0, 5, 0)
+      };
 
-  // Levará 3 segundos para completar o caminho inteiro (1s por segmento).
-  transform.ATween("position", path, 3f); 
-  ```
+      // It will take 3 seconds to complete the entire path (1s per segment).
+      transform.ATween("position", path, 3f); 
+      ```
 
-  \</details\>
+      </details>
 
-* **`duration`**: A duração da animação em segundos.
+* **`duration`**: The duration of the animation in seconds.
 
-* **`easing`**: A curva de aceleração da animação (veja a seção **Easing Values**).
+* **`easing`**: The acceleration curve of the animation (see the **Easing Values** section).
 
-* **`onComplete`**: Um callback opcional que é executado quando a animação termina (não é chamado em loops).
+* **`onComplete`**: An optional callback that is executed when the animation ends (not called in loops).
 
-* **`playback`**: O modo de reprodução da animação (veja a seção **Playback Modes**).
+* **`playback`**: The playback mode of the animation (see the **Playback Modes** section).
 
-* **`fromValue`** (Opcional): Força a animação a começar deste valor em vez do valor atual da propriedade.
-
+* **`fromValue`** (Optional): Forces the animation to start from this value instead of the current value of the property.
 -----
 
 ### Control Functions 🎮
 
-Controle o ciclo de vida de suas animações e timers depois que eles já foram iniciados.
+Control the lifecycle of your animations and timers after they've started.
 
-| Função | Descrição | Estado Final | Executa Callback? |
+| Function | Description | Final State | Execute Callback? |
 |:---|:---|:---|:---|
-| **`AComplete`** | **Completa** o tween, saltando para seu estado final. | Fim ou Início | **Sim** (padrão) |
-| **`AStop`** | **Para** o tween imediatamente, congelando-o no lugar. | Valor Atual | **Não** |
-| **`ACancel`** | **Cancela** o tween, revertendo para seu estado inicial. | Valor Inicial | **Não** |
-| **`ACompleteTimer`** | **Completa** o timer, acionando seu callback. | - | **Sim** (padrão) |
+| **`AComplete`** | **Completes** the tween, jumping to its final state. | End or Start | **Yes** (default) |
+| **`AStop`** | **Stops** the tween immediately, freezing it in place. | Current Value | **No** |
+| **`ACancel`** | **Cancels** the tween, reverting to its initial state. | Initial Value | **No** |
+| **`ACompleteTimer`** | **Completes** the timer, triggering its callback. | - | **Yes** (default) |
 
-\<details\>
-\<summary\>\<strong\>▶️ Detalhes das Funções de Controle\</strong\>\</summary\>
+<details>
+<summary><strong>▶️ Control Function Details</strong></summary>
 
 #### **`AComplete`**
 
-Completa um ou todos os tweens em um alvo, saltando para um estado final especificado e acionando seus callbacks.
+Completes one or all tweens on a target, jumping to a specified end state and triggering their callbacks.
 
 ```csharp
 Target.AComplete(string propertyName = null, bool withCallback = true, EndState endState = EndState.End)
 ```
 
-* `propertyName`: O tween específico a ser completado. Se `null`, completa **todos** os tweens no alvo.
-* `withCallback`: Se `true` (padrão), o callback `onComplete` do tween será executado.
-* `endState`: Determina para onde a propriedade salta. Use `EndState.End` (padrão) para saltar para o `toValue` ou `EndState.Start` para saltar para o `fromValue`.
+* `propertyName`: The specific tween to complete. If `null`, completes **all** tweens in the target.
+* `withCallback`: If `true` (default), the tween's `onComplete` callback will be executed.
+* `endState`: Determines where the property jumps to. Use `EndState.End` (default) to jump to the toValue, 
+`EndState.Start` to jump to the fromValue, or `EndState.Middle` to remain at the current value.
 
 #### **`AStop`**
 
-Para um ou todos os tweens em um alvo, deixando-os em seu estado atual.
+Stops one or all tweens on a target, leaving them in their current state.
 
 ```csharp
 Target.AStop(string propertyName = null)
 ```
 
-* `propertyName`: O tween específico a ser parado. Se `null`, para **todos** os tweens no alvo.
+* `propertyName`: The specific tween to stop. If `null`, stops **all** tweens in the target.
 
 #### **`ACancel`**
 
-Cancela um ou todos os tweens em um alvo, revertendo-os para seu estado inicial.
+Cancel one or all tweets in a target, reverting them to their initial state.
 
 ```csharp
 Target.ACancel(string propertyName = null)
 ```
 
-* `propertyName`: O tween específico a ser cancelado. Se `null`, cancela **todos** os tweens no alvo.
+* `propertyName`: The specific tween to cancel. If `null`, cancels **all** tweens in the target.
 
 #### **`ACompleteTimer`**
 
-Completa um timer específico ou todos os timers em um alvo.
+Completes a specific timer or all timers on a target.
 
 ```csharp
 Target.ACompleteTimer(int timerId = -1, bool withFinalCallback = true)
 ```
 
-* `timerId`: O ID do timer a ser completado (retornado por `ATimeout`). Se `-1` (padrão), completa **todos** os timers no alvo.
-* `withFinalCallback`: Se `true` (padrão), o callback do timer será executado.
-
-\</details\>
+* `timerId`: The ID of the timer to complete (returned by `ATimeout`). If `-1` (default), completes **all** timers in the target.
+* `withFinalCallback`: If `true` (default), the timer callback will be executed.
+</details>
 
 -----
 
 ### Playback Modes
 
-O parâmetro `playback` define como o `ATween` se comporta ao longo do tempo.
+The `playback` parameter defines how `ATween` behaves over time.
 
-| Modo | Comportamento | Descrição |
+| Mode | Behavior | Description |
 |:---|:---|:---|
-| `Forward` | 🏃 A → B | **(Padrão)** Anima do valor inicial para o final e para. |
-| `Backward` | ◀️ B → A | Anima do valor final para o inicial e para. |
-| `PingPong` | 🏓 A → B → A | Anima do início ao fim, depois volta para o início e para. |
-| `LoopForward` | 🔁 A → B, A → B... | Repete a animação do início ao fim indefinidamente. |
-| `LoopBackward` | 🔁 B → A, B → A... | Repete a animação do fim ao início indefinidamente. |
-| `LoopPingPong` | 🔄 A → B → A, A → B → A... | Repete a animação "ida e volta" indefinidamente. Ideal para efeitos de pulsação. |
+| `Forward` | 🏃 A → B | **(Default)** Animates from the start value to the end value and stops. |
+| `Backward` | ◀️ B → A | Animates from the end value to the start value and stops. |
+| `PingPong` | 🏓 A → B → A | Animates from the start to the end, then loops back to the start and stops. |
+| `LoopForward` | 🔁 A → B, A → B... | Repeats the animation from start to finish indefinitely. |
+| `LoopBackward` | 🔁 B → A, B → A... | Repeats the animation from end to start indefinitely. |
+| `LoopPingPong` | 🔄 A → B → A, A → B → A... | Repeats the "back and forth" animation indefinitely. Ideal for pulsating effects. |
 
-**Nota:** O callback `onComplete` **não** é chamado para os modos *Loop*, pois eles, por definição, nunca terminam.
+**Note:** The `onComplete` callback **is** not called for *Loop* modes, as they, by definition, never end.
 
 -----
 
 ### Easing Values
 
-Uma lista de todas as curvas de easing disponíveis.
+A list of all available easing curves.
 
-\<details\>
-\<summary\>\<strong\>▶️ Lista de Easing Values\</strong\>\</summary\>
+<details>
+<summary><strong>▶️ List of Easing Values </strong></summary>
 
 ```
 InBack, InBounce, InCirc, InCubic, InElastic, InExpo,
@@ -259,10 +258,11 @@ OutInQuad, OutInQuart, OutInQuint, OutInSine,
 OutQuad, OutQuart, OutQuint, OutSine
 ```
 
-\</details\>
+</details>
 
-Veja uma representação visual de cada curva de easing aqui:
-➡️ **[Visual Easing Reference](https://easings.net/)** (um excelente recurso visual para entender cada curva)
+See a visual representation of each easing curve here:
+➡️ **[Visual Easing Reference](https://easings.net/)** (an excellent visual resource for understanding each curve)
+
 -----
 
 ### 💻 Usage Examples
