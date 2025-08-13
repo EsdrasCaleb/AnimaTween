@@ -41,8 +41,7 @@ namespace AnimaTween
             textArea1.ATween("color", textArea1.color, 2f, onComplete: onCompleteText,
                 fromValue: new Color(textArea1.color.r, textArea1.color.g, textArea2.color.b, 0f));
             // 2. When text appears, start the cube rotating on the Y-axis indefinitely.
-            Vector3 auxVect = cube.eulerAngles;
-            cube.ATween("eulerAngles", auxVect + new Vector3(0, 360, 0), 5f, Easing.Linear,
+            cube.ATween("eulerAngles", cube.eulerAngles + new Vector3(0, 360, 0), 5f, Easing.Linear,
                 playback: Playback.LoopForward);
         }
 
@@ -169,8 +168,28 @@ namespace AnimaTween
 
             // 16. Contort the cube's scale while it rotates.
             cube.ATween("localScale", new Vector3(0.5f, 1.5f, 0.8f), 2f, Easing.InOutSine,
-                playback: Playback.LoopPingPong);
+                () =>
+                {
+                    // Reset cube state
+                    fisicalCube.isKinematic = true;
+                    cube.ATween("localScale", Vector3.one, 0.5f);
+                    cube.ATween("rotation", Quaternion.identity, 0.5f);
+                    var finalPath = new Vector3[]
+                    {
+                        new Vector3(-2, 2, -4),
+                        new Vector3(2, 2, -4),
+                        new Vector3(2, -2, -4),
+                        new Vector3(-2, -2, -4),
+                        cube.position // Retorna à posição inicial no final
+                    };
 
+                    // Inicia a animação do caminho
+                    cube.ATween("position", finalPath, 4.0f, Easing.InOutSine);
+                    // Ao mesmo tempo, inicia uma rotação em loop infinito
+                    cube.ATween("eulerAngles", cube.eulerAngles + new Vector3(0, 360, 0), 5f, Easing.Linear,
+                        playback: Playback.LoopForward);
+                });
+            
             
             textArea1.ATween("text", "Control Tweens...", 2.0f, Easing.Linear);
             // 17. After a few seconds, stop the physics and write the final message.
@@ -180,12 +199,9 @@ namespace AnimaTween
                 textArea1.ATween("text", "Control Tweens... Control the GAME!", 2.0f, Easing.Linear);
                 // Stop physics timers and scale animation.
                 this.ACompleteTimer();
-                cube.AComplete("localScale");
 
-                // Reset cube state
-                fisicalCube.isKinematic = true;
-                cube.ATween("localScale", Vector3.one, 0.5f);
-                cube.ATween("rotation", Quaternion.identity, 0.5f);
+
+
                 // 18 & 19. Final sequence: fade out music and zoom camera.
                 music.ATween("volume", 0f, 4.0f, onComplete: () => music.Stop());
                 mainCamera.ATween("fieldOfView", 1f, 4.0f, Easing.InCubic);

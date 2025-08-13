@@ -119,15 +119,15 @@ namespace AnimaTween
                 return;
             }
             
-            var tweenInfo = new TweenInfo
-            {
-                Target = target,
-                OnComplete = onComplete,
-                StartValue = startValue,
-                ToValue = toValue,
-                FieldInfo = fieldInfo,
-                PropertyInfo = propertyInfo
-            };
+            var tweenInfo = new TweenInfo(
+                target,
+                propertyName,
+                onComplete,
+                startValue,
+                toValue,
+                propertyInfo,
+                fieldInfo
+            );
             tweenInfo.Coroutine = host.StartCoroutine(
                 TweenConductorCoroutine(host, propertyName, tweenInfo, duration, easing, playback)
             );
@@ -151,7 +151,7 @@ namespace AnimaTween
         public static int ATimeout(this object target, float time, Action callback, bool repeat = false)
         {
             var host = GetHostForTarget(target);
-            var tweenInfo = new TweenInfo { Target = target, OnComplete = callback };
+            var tweenInfo = new TweenInfo(target,callback);
             int nextId = 0;
             string key;
 
