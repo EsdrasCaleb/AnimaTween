@@ -95,6 +95,12 @@ namespace AnimaTween
                 Quaternion e = (Quaternion)end;
                 updater = p => tweenInfo.SetValue(Quaternion.Slerp(s, e, GetEasedProgress(easing, p)));
             }
+            else if (targetType == typeof(Gradient))
+            {
+                Gradient s = (Gradient)start;
+                Gradient e = (Gradient)end;
+                updater = p => tweenInfo.SetValue(LerpGradient(s, e, GetEasedProgress(easing, p)));
+            }
             else
             {
                 Debug.LogError($"AnimaTween: Unsupported property type for tweening: {targetType.Name}");
@@ -372,6 +378,43 @@ namespace AnimaTween
             Vector3 center = Vector3.Lerp(a.center, b.center, t);
             Vector3 size = Vector3.Lerp(a.size, b.size, t);
             return new Bounds(center, size);
+        }
+        
+        /// <summary>
+        /// Interpola entre dois gradientes amostrando-os em vários pontos.
+        /// </summary>
+        /// <param name="a">O gradiente inicial.</param>
+        /// <param name="b">O gradiente final.</param>
+        /// <param name="t">O progresso da interpolação (0 a 1).</param>
+        /// <param name="resolution">O número de amostras a retirar. Mais alto é mais preciso, mas mais lento.</param>
+        /// <returns>Um novo gradiente que é a mistura dos dois.</returns>
+        private static Gradient LerpGradient(Gradient a, Gradient b, float t, int resolution = 16)
+        {
+            var newGradient = new Gradient();
+
+            // Cria os arrays para as novas chaves de cor e alfa.
+            var colorKeys = new GradientColorKey[resolution];
+            var alphaKeys = new GradientAlphaKey[resolution];
+
+            for (int i = 0; i < resolution; i++)
+            {
+                // Calcula a posição da amostra atual (de 0 a 1).
+                float samplePos = (float)i / (resolution - 1);
+
+                // Obtém a cor de cada gradiente nesta posição.
+                Color colorA = a.Evaluate(samplePos);
+                Color colorB = b.Evaluate(samplePos);
+
+                // Interpola entre as duas cores amostradas.
+                Color finalColor = Color.Lerp(colorA, colorB, t);
+
+                // Cria as novas chaves de cor e alfa.
+                colorKeys[i] = new GradientColorKey(finalColor, samplePos);
+                alphaKeys[i] = new GradientAlphaKey(finalColor.a, samplePos);
+            }
+
+            newGradient.SetKeys(colorKeys, alphaKeys);
+            return newGradient;
         }
     }
 }

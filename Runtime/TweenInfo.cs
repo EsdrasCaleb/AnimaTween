@@ -29,6 +29,7 @@ namespace AnimaTween
         private Action<Rect> _rectSetter;
         private Action<Bounds> _boundsSetter;
         private Action<string> _stringSetter;
+        private Action<Gradient> _gradientSetter;
 
 
 
@@ -83,6 +84,28 @@ namespace AnimaTween
                     case "localScale": _vector3Setter = (v) => rt.localScale = v; return;
                 }
             }
+            // **NOVO:** Suporte para Rigidbody 3D
+            else if (target is Rigidbody rb3d)
+            {
+                switch (propertyName)
+                {
+                    case "position": _vector3Setter = (v) => rb3d.position = v; return;
+                    case "rotation": _quaternionSetter = (q) => rb3d.rotation = q; return;
+                    case "velocity": _vector3Setter = (v) => rb3d.velocity = v; return;
+                    case "angularVelocity": _vector3Setter = (v) => rb3d.angularVelocity = v; return;
+                }
+            }
+            // **NOVO:** Suporte para Rigidbody 2D
+            else if (target is Rigidbody2D rb2d)
+            {
+                switch (propertyName)
+                {
+                    case "position": _vector2Setter = (v) => rb2d.position = v; return;
+                    case "rotation": _floatSetter = (f) => rb2d.rotation = f; return;
+                    case "velocity": _vector2Setter = (v) => rb2d.velocity = v; return;
+                    case "angularVelocity": _floatSetter = (f) => rb2d.angularVelocity = f; return;
+                }
+            }
             // CanvasGroup (for UI fading)
             else if (target is CanvasGroup cg)
             {
@@ -134,6 +157,16 @@ namespace AnimaTween
                     case "pitch": _floatSetter = (f) => audio.pitch = f; return;
                 }
             }
+            // LineRenderer
+            else if (target is LineRenderer lr)
+            {
+                if (propertyName == "colorGradient") { _gradientSetter = (g) => lr.colorGradient = g; return; }
+            }
+            // TrailRenderer
+            else if (target is TrailRenderer tr)
+            {
+                if (propertyName == "colorGradient") { _gradientSetter = (g) => tr.colorGradient = g; return; }
+            }
             else if (propertyInfo != null)
             {
                 CreateTypedSetter(propertyInfo.PropertyType, (val) => propertyInfo.SetValue(target, val));
@@ -165,6 +198,7 @@ namespace AnimaTween
             else if (memberType == typeof(Quaternion)) _quaternionSetter = (v) => setter(v);
             else if (memberType == typeof(Rect)) _rectSetter = (v) => setter(v);
             else if (memberType == typeof(Bounds)) _boundsSetter = (v) => setter(v);
+            else if (memberType == typeof(Gradient)) _gradientSetter = (v) => setter(v);
         }
 
         // --- SetValue methods are now extremely simple and fast ---
@@ -180,6 +214,7 @@ namespace AnimaTween
         public void SetValue(Quaternion value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _quaternionSetter?.Invoke(value); }
         public void SetValue(Rect value)    { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _rectSetter?.Invoke(value); }
         public void SetValue(Bounds value)  { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _boundsSetter?.Invoke(value); }
+        public void SetValue(Gradient value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _gradientSetter?.Invoke(value); }
         /// <summary>
         /// The new SetValue prioritizes the optimized path.
         /// </summary>
@@ -192,6 +227,7 @@ namespace AnimaTween
             if (_intSetter != null && value is int i) { _intSetter(i); return; }
             if (_stringSetter != null && value is string s) { _stringSetter(s); return; }
             if (_colorSetter != null && value is Color c) { _colorSetter(c); return; }
+            if (_gradientSetter != null && value is Gradient g) { _gradientSetter(g); return; }
             if (_vector2Setter != null && value is Vector2 v2) { _vector2Setter(v2); return; }
             if (_vector3Setter != null && value is Vector3 v3) { _vector3Setter(v3); return; }
             if (_vector4Setter != null && value is Vector4 v4) { _vector4Setter(v4); return; }

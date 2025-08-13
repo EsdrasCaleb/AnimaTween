@@ -120,12 +120,13 @@ This is AnimaTween's main function. Here are the details of its parameters:
       You can animate any public field or property of the following types:
 
       * **`float`**, **`int`**, **`double`**: For numeric values. `int` will be rounded during animation.
+      * **`string`**: Creates a typewriter effect.
       * **`Vector2`**, **`Vector3`**, **`Vector4`**: For positions, scales, shader properties, etc.
       * **`Color`**: For animating colors of materials, images, sprites, etc.
       * **`Quaternion`**: For rotations. Uses `Quaternion.Slerp` for smooth interpolation.
       * **`Rect`**: Useful for complex UI animations.
       * **`Bounds`**: For animating bounding boxes, useful for physics or trigger areas.
-      * **`string`**: Creates a typewriter effect.
+      * **`Gradient`**: For animating gradient properties, like those on a LineRenderer or TrailRenderer.
           
       </details>
 
