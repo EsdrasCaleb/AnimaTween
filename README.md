@@ -110,43 +110,43 @@ This is AnimaTween's main function. Here are the details of its parameters:
 
 * **`Target`**: The object containing the field or property to be animated.
 
-* **`propertyName`**: The name of the field or property (as a string).
+  * **`propertyName`**: The name of the field or property (as a string).
 
-  * **`toValue`**: The animation's target value. This is a versatile parameter that accepts different input types.
+    * **`toValue`**: The animation's target value. This is a versatile parameter that accepts different input types.
 
-    <details>
-    <summary><strong>▶️ Supported Value Types</strong></summary>
+      <details>
+      <summary><strong>▶️ Supported Value Types</strong></summary>
 
-    You can animate any public field or property of the following types:
+      You can animate any public field or property of the following types:
 
-    - **`float`**: For single numeric values (e.g., `alpha` of a CanvasGroup, velocity).
-      - **`int`**: For integer values. The animation will occur with rounding.
-      - **`Vector2`**: For 2D positions, scales, etc.
-      - **`Vector3`**: For 3D positions, scales, Euler angles, etc.
-      - **`Color`**: For animating colors of materials, images, sprites, etc.
-      - **`Quaternion`**: For rotations. Uses `Quaternion.Slerp` for smooth interpolation.
-    - **`string`**: Creates a typewriter effect.
-
+      * **`float`**, **`int`**, **`double`**: For numeric values. `int` will be rounded during animation.
+      * **`Vector2`**, **`Vector3`**, **`Vector4`**: For positions, scales, shader properties, etc.
+      * **`Color`**: For animating colors of materials, images, sprites, etc.
+      * **`Quaternion`**: For rotations. Uses `Quaternion.Slerp` for smooth interpolation.
+      * **`Rect`**: Useful for complex UI animations.
+      * **`Bounds`**: For animating bounding boxes, useful for physics or trigger areas.
+      * **`string`**: Creates a typewriter effect.
+          
       </details>
 
       <details>
-      <summary><strong>▶️ Path Animation (Waypoints)</strong></summary>
-
-      Instead of a single value, you can provide a collection (List<T> or T[]) of any supported type to create a path animation. The duration will be distributed equally across the path segments.
-
-     **Example:** Making an object move through three points.
-
-      ```csharp
-      var path = new Vector3[]
-      {
-          new Vector3(5, 0, 0),
-          new Vector3(5, 5, 0),
-          new Vector3(0, 5, 0)
-      };
-
-      // It will take 3 seconds to complete the entire path (1s per segment).
-      transform.ATween("position", path, 3f); 
-      ```
+         <summary><strong>▶️ Path Animation (Waypoints)</strong></summary>
+    
+         Instead of a single value, you can provide a collection (List<T> or T[]) of any supported type to create a path animation. The duration will be distributed equally across the path segments.
+   
+         **Example:** Making an object move through three points.
+   
+        ```csharp
+         var path = new Vector3[]
+         {
+             new Vector3(5, 0, 0),
+             new Vector3(5, 5, 0),
+             new Vector3(0, 5, 0)
+         };
+      
+         // It will take 3 seconds to complete the entire path (1s per segment).
+         transform.ATween("position", path, 3f); 
+        ```
 
       </details>
 
@@ -159,7 +159,51 @@ This is AnimaTween's main function. Here are the details of its parameters:
 * **`playback`**: The playback mode of the animation (see the **Playback Modes** section).
 
 * **`fromValue`** (Optional): Forces the animation to start from this value instead of the current value of the property.
+
 -----
+
+### Juice Functions ✨
+
+Special functions to add "juice" and visual impact to your animations with a single call.
+
+#### `AShake`
+
+Creates a shake effect on a `Vector3` property (position, rotation, or scale).
+
+```csharp
+Target.AShake(string propertyName, float duration, float strength = 1f, int vibrato = 10, Action onComplete = null)
+```
+
+* `propertyName`: The name of the property to shake (must be a `Vector3`).
+* `duration`: The total duration of the shake effect.
+* `strength`: The maximum distance the object will move from its origin.
+* `vibrato`: How rapidly the shake will oscillate. Higher values create a more chaotic shake.
+* `onComplete`: An optional callback for when the shake finishes.
+
+**Example:** Make the camera shake for 1 second.
+
+```csharp
+mainCamera.transform.AShake("position", 1f, strength: 0.5f);
+```
+
+#### `APunch`
+
+Creates a "punch" animation, moving a `Vector3` property away from and back to its starting point.
+
+```csharp
+Target.APunch(string propertyName, Vector3 punch, float duration, Action onComplete = null)
+```
+
+* `propertyName`: The name of the property to punch (must be a `Vector3`).
+* `punch`: The direction and magnitude of the punch.
+* `duration`: The total duration of the punch and return animation.
+* `onComplete`: An optional callback for when the punch finishes.
+
+**Example:** Make a button jump when clicked.
+
+```csharp
+myButton.transform.APunch("localScale", new Vector3(0.1f, 0.1f, 0), 0.5f);
+```
 
 ### Control Functions 🎮
 

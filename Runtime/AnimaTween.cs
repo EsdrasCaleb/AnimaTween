@@ -180,6 +180,76 @@ namespace AnimaTween
             
             return nextId;
         }
+        
+        /// <summary>
+        /// Creates a shake animation on a property. Works best with position or rotation.
+        /// </summary>
+        /// <param name="target">The object containing the property to shake.</param>
+        /// <param name="propertyName">The name of the property to shake (must be a Vector3).</param>
+        /// <param name="duration">The total duration of the shake effect.</param>
+        /// <param name="strength">The maximum distance the object will move from its origin. Default is 1.</param>
+        /// <param name="vibrato">How many "wiggles" the shake will have. Higher is more chaotic. Default is 10.</param>
+        /// <param name="onComplete">An optional callback for when the shake finishes.</param>
+        public static void AShake(this object target, string propertyName, float duration, float strength = 1f, int vibrato = 10, Action onComplete = null)
+        {
+            // Validação para garantir que a propriedade é um Vector3
+            FieldInfo fieldInfo = target.GetType().GetField(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            PropertyInfo propertyInfo = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if ((fieldInfo == null && propertyInfo == null) || (fieldInfo?.FieldType ?? propertyInfo?.PropertyType) != typeof(Vector3))
+            {
+                Debug.LogError($"AnimaTween AShake: Property '{propertyName}' not found or is not a Vector3.");
+                return;
+            }
+
+            Vector3 startValue = (Vector3)(fieldInfo?.GetValue(target) ?? propertyInfo?.GetValue(target));
+            
+            // Gera proceduralmente a lista de pontos para o caminho do shake
+            var path = new List<Vector3>();
+            for (int i = 0; i < vibrato; i++)
+            {
+                // A força do tremor diminui ao longo do tempo
+                float strengthFade = 1.0f - ((float)i / vibrato);
+                path.Add(startValue + UnityEngine.Random.insideUnitSphere * strength * strengthFade);
+            }
+            // Garante que o último ponto seja exatamente o ponto inicial
+            path.Add(startValue);
+
+            // Chama o ATween com o caminho gerado
+            target.ATween(propertyName, path, duration, Easing.OutQuad, onComplete);
+        }
+        
+        
+        /// <summary>
+        /// Creates a punch animation on a property, moving it away and back to its starting point.
+        /// </summary>
+        /// <param name="target">The object containing the property to punch.</param>
+        /// <param name="propertyName">The name of the property to punch (must be a Vector3).</param>
+        /// <param name="punch">The direction and magnitude of the punch.</param>
+        /// <param name="duration">The total duration of the punch and return animation.</param>
+        /// <param name="onComplete">An optional callback for when the punch finishes.</param>
+        public static void APunch(this object target, string propertyName, Vector3 punch, float duration, Action onComplete = null)
+        {
+            // Validação para garantir que a propriedade é um Vector3
+            FieldInfo fieldInfo = target.GetType().GetField(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            PropertyInfo propertyInfo = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if ((fieldInfo == null && propertyInfo == null) || (fieldInfo?.FieldType ?? propertyInfo?.PropertyType) != typeof(Vector3))
+            {
+                Debug.LogError($"AnimaTween APunch: Property '{propertyName}' not found or is not a Vector3.");
+                return;
+            }
+
+            Vector3 startValue = (Vector3)(fieldInfo?.GetValue(target) ?? propertyInfo?.GetValue(target));
+    
+            // O caminho do punch é simples: vai até o pico do "soco" e volta ao início.
+            var path = new Vector3[]
+            {
+                startValue + punch,
+                startValue
+            };
+
+            // Chama o ATween com o caminho gerado e um easing elástico para dar o efeito de "soco".
+            target.ATween(propertyName, path, duration, Easing.OutElastic, onComplete);
+        }
 
         /// <summary>
         /// Stops a specific timer or all timers associated with a target object, if the timer do not exists do nothing.

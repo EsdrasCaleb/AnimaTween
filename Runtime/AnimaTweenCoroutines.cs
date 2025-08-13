@@ -34,14 +34,42 @@ namespace AnimaTween
 
             Action<float> updater;
             
-            if (targetType == typeof(float) || targetType == typeof(int))
+            if (targetType == typeof(float) || targetType == typeof(int) || targetType == typeof(double))
             {
-                float s = Convert.ToSingle(start);
-                float e = Convert.ToSingle(end);
+                // Usa double para todos os cálculos para manter a máxima precisão.
+                double s = Convert.ToDouble(start);
+                double e = Convert.ToDouble(end);
+    
                 updater = p => {
-                    float val = Mathf.Lerp(s, e, GetEasedProgress(easing, p));
-                    tweenInfo.SetValue(targetType == typeof(int) ? (object)Mathf.RoundToInt(val) : val);
+                    // Lerp manual para double
+                    double val = s + (e - s) * GetEasedProgress(easing, p);
+
+                    // Converte de volta para o tipo original antes de definir o valor.
+                    if (targetType == typeof(float))
+                    {
+                        tweenInfo.SetValue((float)val);
+                    }
+                    else if (targetType == typeof(int))
+                    {
+                        tweenInfo.SetValue(Convert.ToInt32(Math.Round(val)));
+                    }
+                    else // double
+                    {
+                        tweenInfo.SetValue(val);
+                    }
                 };
+            }
+            else if (targetType == typeof(Rect))
+            {
+                Rect s = (Rect)start;
+                Rect e = (Rect)end;
+                updater = p => tweenInfo.SetValue(LerpRect(s, e, GetEasedProgress(easing, p)));
+            }
+            else if (targetType == typeof(Bounds))
+            {
+                Bounds s = (Bounds)start;
+                Bounds e = (Bounds)end;
+                updater = p => tweenInfo.SetValue(LerpBounds(s, e, GetEasedProgress(easing, p)));
             }
             else if (targetType == typeof(Vector3))
             {
@@ -317,6 +345,33 @@ namespace AnimaTween
             }
 
             return n1 * (x -= 2.625f / d1) * x + 0.984375f;
+        }
+        
+        /// <summary>
+        /// Interpola linearmente entre dois Rects. Uma função auxiliar para compatibilidade com versões mais antigas do Unity.
+        /// </summary>
+        /// <summary>
+        /// Interpola linearmente entre dois Rects usando Vector2.Lerp para posição e tamanho.
+        /// </summary>
+        private static Rect LerpRect(Rect a, Rect b, float t)
+        {
+            // Interpola a posição (x, y) como um Vector2
+            Vector2 newPosition = Vector2.Lerp(a.position, b.position, t);
+    
+            // Interpola o tamanho (width, height) como um Vector2
+            Vector2 newSize = Vector2.Lerp(a.size, b.size, t);
+
+            return new Rect(newPosition, newSize);
+        }
+        
+        /// <summary>
+        /// Interpola linearmente entre dois Bounds.
+        /// </summary>
+        private static Bounds LerpBounds(Bounds a, Bounds b, float t)
+        {
+            Vector3 center = Vector3.Lerp(a.center, b.center, t);
+            Vector3 size = Vector3.Lerp(a.size, b.size, t);
+            return new Bounds(center, size);
         }
     }
 }
