@@ -101,6 +101,10 @@ namespace AnimaTween
                 {
                     startValue = material.GetFloat(propertyName);
                 }
+                else if (toValue is int)
+                {
+                    startValue = material.GetInt(propertyName);
+                }
                 else if (toValue is Color)
                 {
                     startValue = material.GetColor(propertyName);

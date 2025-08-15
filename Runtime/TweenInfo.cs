@@ -145,6 +145,7 @@ namespace AnimaTween
                 if (material_prop)
                 {
                     _floatSetter = (f) => m.SetFloat(propertyName, f);
+                    _intSetter = (i) => m.SetInt(propertyName, i);
                     _colorSetter = (c) => m.SetColor(propertyName, c);
                     _vector4Setter = (v) => m.SetVector(propertyName, v);
                 }
