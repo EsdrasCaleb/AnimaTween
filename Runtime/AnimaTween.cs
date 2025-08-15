@@ -144,7 +144,7 @@ namespace AnimaTween
                 return;
             }
             
-            var tweenInfo = new TweenInfo(
+            TweenInfo tweenInfo = new TweenInfo(
                 target,
                 propertyName,
                 onComplete,

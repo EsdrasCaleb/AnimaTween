@@ -31,7 +31,6 @@ namespace AnimaTween
         private Action<Bounds> _boundsSetter;
         private Action<string> _stringSetter;
         private Action<Gradient> _gradientSetter;
-        private bool material_prop;
 
 
 
@@ -142,7 +141,7 @@ namespace AnimaTween
             {
                 // Note: This modifies the shared material asset. A better practice for individual
                 // objects is to use renderer.material to create an instance first.
-                if (material_prop)
+                if (materialProp)
                 {
                     _floatSetter = (f) => m.SetFloat(propertyName, f);
                     _intSetter = (i) => m.SetInt(propertyName, i);
