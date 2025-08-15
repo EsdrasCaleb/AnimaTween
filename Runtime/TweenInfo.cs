@@ -284,7 +284,7 @@ namespace AnimaTween
                 }
                 else if (targetType == typeof(int))
                 {
-                    _intSetter(Convert.ToInt32(Math.Round(val)));
+                    _intSetter((int)Math.Round(val));
                 }
                 else // double
                 {
