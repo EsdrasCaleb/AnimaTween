@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -72,6 +73,20 @@ namespace AnimaTween
             {
                 if (propertyName == "text") { _stringSetter = (s) => text.text = s; return; }
                 if (propertyName == "color") { _colorSetter = (c) => text.color = c; return; }
+            }
+            else if (target is TMP_Text tmpText) 
+            {
+                switch (propertyName)
+                {
+                    case "text": _stringSetter = (s) => tmpText.text = s; return;
+                    case "color": _colorSetter = (c) => tmpText.color = c; return;
+                    case "fontSize": _floatSetter = (f) => tmpText.fontSize = f; return;
+                    case "characterSpacing": _floatSetter = (f) => tmpText.characterSpacing = f; return;
+                    case "wordSpacing": _floatSetter = (f) => tmpText.wordSpacing = f; return;
+                    case "lineSpacing": _floatSetter = (f) => tmpText.lineSpacing = f; return;
+                    case "margin": _vector4Setter = (v) => tmpText.margin = v; return;
+                    case "maxVisibleCharacters": _intSetter = (i) => tmpText.maxVisibleCharacters = i; return;
+                }
             }
             // RectTransform (for UI)
             else if (target is RectTransform rt)

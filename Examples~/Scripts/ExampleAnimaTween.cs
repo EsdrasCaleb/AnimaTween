@@ -1,5 +1,6 @@
 using UnityEngine;
 using AnimaTween;
+using TMPro;
 using UnityEngine.UI;
 
 
@@ -12,7 +13,7 @@ namespace AnimaTween
 
         [SerializeField] private Text textArea1;
         [SerializeField] private Text textArea2;
-
+        [SerializeField] private TMP_Text textArea3;
         [Header("Scene Objects")] [SerializeField]
         private Transform cube;
 
@@ -20,6 +21,7 @@ namespace AnimaTween
         [SerializeField] private MeshRenderer meshCube;
         [SerializeField] private AudioSource music;
         [SerializeField] private Camera mainCamera;
+        
 
         // Auxiliary variables
         private Color originalCubeColor;

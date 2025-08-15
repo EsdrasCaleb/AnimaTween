@@ -1,11 +1,14 @@
 {
   "name": "com.esdrascaleb.animatween",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "displayName": "AnimaTween",
   "description": "A simple, lightweight, and zero-setup tweening engine for Unity, inspired by the intuitive APIs of other game engines. Animate properties by name without external dependencies.",
   "unity": "2021.3",
   "documentationUrl": "https://github.com/esdrascaleb/AnimaTween#readme",
   "licensesUrl": "https://github.com/esdrascaleb/AnimaTween/blob/main/LICENSE",
+  "dependencies": {
+    "com.unity.textmeshpro": "3.0.6"
+  },
   "keywords": [
     "tween",
     "animation",
