@@ -120,7 +120,7 @@ This is AnimaTween's main function. Here are the details of its parameters:
       You can animate any public field or property of the following types:
 
       * **`float`**, **`int`**, **`double`**: For numeric values. `int` will be rounded during animation.
-      * **`string`**: Creates a typewriter effect.
+      * **`string`**: Creates a typewriter effect. If the start and end values are numeric, perform a numeric animation.
       * **`Vector2`**, **`Vector3`**, **`Vector4`**: For positions, scales, shader properties, etc.
       * **`Color`**: For animating colors of materials, images, sprites, etc.
       * **`Quaternion`**: For rotations. Uses `Quaternion.Slerp` for smooth interpolation.
@@ -306,7 +306,7 @@ OutQuad, OutQuart, OutQuint, OutSine
 </details>
 
 See a visual representation of each easing curve here:
-➡️ **[Visual Easing Reference](https://easings.net/)** (an excellent visual resource for understanding each curve)
+➡️ **[Visual Easing Reference](https://defold.com/manuals/property-animation/#easing)**
 
 -----
 

@@ -25,6 +25,8 @@ namespace AnimaTween
         {
             object start = isFrom ? tweenInfo.ToValue : tweenInfo.StartValue;
             object end = isFrom ? tweenInfo.StartValue : tweenInfo.ToValue;
+            tweenInfo.StartValue = start;
+            tweenInfo.ToValue = end;
             Type targetType = tweenInfo.StartValue.GetType();
 
             if (targetType == typeof(string))
@@ -32,80 +34,7 @@ namespace AnimaTween
                 return AnimateString(tweenInfo, (string)start, (string)end, duration, easing);
             }
 
-            Action<float> updater;
-            
-            if (targetType == typeof(float) || targetType == typeof(int) || targetType == typeof(double))
-            {
-                // Usa double para todos os cálculos para manter a máxima precisão.
-                double s = Convert.ToDouble(start);
-                double e = Convert.ToDouble(end);
-    
-                updater = p => {
-                    // Lerp manual para double
-                    double val = s + (e - s) * GetEasedProgress(easing, p);
-
-                    // Converte de volta para o tipo original antes de definir o valor.
-                    if (targetType == typeof(float))
-                    {
-                        tweenInfo.SetValue((float)val);
-                    }
-                    else if (targetType == typeof(int))
-                    {
-                        tweenInfo.SetValue(Convert.ToInt32(Math.Round(val)));
-                    }
-                    else // double
-                    {
-                        tweenInfo.SetValue(val);
-                    }
-                };
-            }
-            else if (targetType == typeof(Rect))
-            {
-                Rect s = (Rect)start;
-                Rect e = (Rect)end;
-                updater = p => tweenInfo.SetValue(LerpRect(s, e, GetEasedProgress(easing, p)));
-            }
-            else if (targetType == typeof(Bounds))
-            {
-                Bounds s = (Bounds)start;
-                Bounds e = (Bounds)end;
-                updater = p => tweenInfo.SetValue(LerpBounds(s, e, GetEasedProgress(easing, p)));
-            }
-            else if (targetType == typeof(Vector3))
-            {
-                Vector3 s = (Vector3)start;
-                Vector3 e = (Vector3)end;
-                updater = p => tweenInfo.SetValue(Vector3.Lerp(s, e, GetEasedProgress(easing, p)));
-            }
-            else if (targetType == typeof(Vector2))
-            {
-                Vector2 s = (Vector2)start;
-                Vector2 e = (Vector2)end;
-                updater = p => tweenInfo.SetValue(Vector2.Lerp(s, e, GetEasedProgress(easing, p)));
-            }
-            else if (targetType == typeof(Color))
-            {
-                Color s = (Color)start;
-                Color e = (Color)end;
-                updater = p => tweenInfo.SetValue(Color.Lerp(s, e, GetEasedProgress(easing, p)));
-            }
-            else if (targetType == typeof(Quaternion))
-            {
-                Quaternion s = (Quaternion)start;
-                Quaternion e = (Quaternion)end;
-                updater = p => tweenInfo.SetValue(Quaternion.Slerp(s, e, GetEasedProgress(easing, p)));
-            }
-            else if (targetType == typeof(Gradient))
-            {
-                Gradient s = (Gradient)start;
-                Gradient e = (Gradient)end;
-                updater = p => tweenInfo.SetValue(LerpGradient(s, e, GetEasedProgress(easing, p)));
-            }
-            else
-            {
-                Debug.LogError($"AnimaTween: Unsupported property type for tweening: {targetType.Name}");
-                return null;
-            }
+            Action<float> updater = p => tweenInfo.SetProgress(GetEasedProgress(easing, p));;
 
             return AnimateCore(updater, duration);
         }
@@ -129,23 +58,119 @@ namespace AnimaTween
         }
         
         /// <summary>
-        /// A special coroutine to handle the typewriter effect for strings.
+        /// A special coroutine to handle string animations.
+        /// It performs a numeric tween if start/end values are numbers, otherwise does a typewriter effect.
         /// </summary>
         private static IEnumerator AnimateString(TweenInfo tweenInfo, string startValue, string toValue, float duration, Easing easing)
         {
-            int startLength = startValue.Length;
-            int endLength = toValue.Length;
-            string baseString = endLength > startLength ? toValue : startValue;
+            // Tenta converter as strings para números (double para abranger int e float).
+            bool isStartNumeric = double.TryParse(startValue, out double startNum);
+            bool isEndNumeric = double.TryParse(toValue, out double endNum);
 
-            Action<float> updater = p => {
+            // Se AMBAS as strings forem numéricas, faz o tween numérico.
+            if (isStartNumeric && isEndNumeric)
+            {
+                // Verifica se os números originais eram inteiros para manter o formato.
+                bool isIntegerTween = startValue.IndexOf('.') == -1 && toValue.IndexOf('.') == -1;
+
+                Action<float> updater = p =>
+                {
+                    float easedProgress = GetEasedProgress(easing, p);
+                    double currentValue = startNum + (endNum - startNum) * easedProgress; // Lerp para double
+
+                    // Converte o número de volta para string, formatando como inteiro se necessário.
+                    string displayValue = isIntegerTween 
+                        ? Mathf.RoundToInt((float)currentValue).ToString() 
+                        : currentValue.ToString("F2"); // "F2" para formatar com 2 casas decimais, ajuste se necessário.
+                    
+                    tweenInfo.SetValue(displayValue);
+                };
+
+                return AnimateCore(updater, duration);
+            }
+            else // Caso contrário, mantém o efeito de máquina de escrever.
+            {
+                // Caso 1 e 2: Simples crescer ou encolher (uma string começa com a outra).
+                if (toValue.StartsWith(startValue) || startValue.StartsWith(toValue))
+                {
+                    int startLength = startValue.Length;
+                    int endLength = toValue.Length;
+                    string baseString = endLength > startLength ? toValue : startValue;
+
+                    Action<float> updater = p => {
+                        float easedProgress = GetEasedProgress(easing, p);
+                        int currentLength = Mathf.RoundToInt(Mathf.Lerp(startLength, endLength, easedProgress));
+                        string currentValue = baseString.Substring(0, Mathf.Clamp(currentLength, 0, baseString.Length));
+                        tweenInfo.SetValue(currentValue);
+                    };
+
+                    return AnimateCore(updater, duration);
+                }
+                // Caso 3: Substituir (as strings são diferentes).
+                else
+                {
+                    // Isso requer uma sequência de dois tweens, então criamos uma corrotina especial para isso.
+                    return AnimateStringReplace(tweenInfo, startValue, toValue, duration, easing);
+                }
+            }
+        }
+        
+        
+        /// <summary>
+        /// A special coroutine to handle replacing one string with another by shrinking to a
+        /// common prefix and then growing to the new string.
+        /// </summary>
+        private static IEnumerator AnimateStringReplace(TweenInfo tweenInfo, string startValue, string toValue, float duration, Easing easing)
+        {
+            // 1. Encontra o prefixo comum mais longo.
+            int prefixLength = 0;
+            while (prefixLength < startValue.Length && prefixLength < toValue.Length && startValue[prefixLength] == toValue[prefixLength])
+            {
+                prefixLength++;
+            }
+            string commonPrefix = startValue.Substring(0, prefixLength);
+
+            // 2. Calcula a proporção da duração com base no número de caracteres a serem alterados.
+            float shrinkChars = startValue.Length - prefixLength;
+            float growChars = toValue.Length - prefixLength;
+            float totalCharsChanged = shrinkChars + growChars;
+
+            // Evita divisão por zero se as strings forem idênticas (embora este caso não deva ser alcançado).
+            if (totalCharsChanged <= 0)
+            {
+                yield return new WaitForSeconds(duration);
+                yield break;
+            }
+
+            float shrinkProportion = shrinkChars / totalCharsChanged;
+            float growProportion = growChars / totalCharsChanged;
+
+            float shrinkDuration = duration * shrinkProportion;
+            float growDuration = duration * growProportion;
+
+            // 3. Fase de Encolher: Anima de startValue até o prefixo comum.
+            int shrinkStartLength = startValue.Length;
+            int shrinkEndLength = commonPrefix.Length;
+            Action<float> shrinkUpdater = p => {
                 float easedProgress = GetEasedProgress(easing, p);
-                int currentLength = Mathf.RoundToInt(Mathf.Lerp(startLength, endLength, easedProgress));
-                string currentValue = baseString.Substring(0, Mathf.Clamp(currentLength, 0, baseString.Length));
+                int currentLength = Mathf.RoundToInt(Mathf.Lerp(shrinkStartLength, shrinkEndLength, easedProgress));
+                string currentValue = startValue.Substring(0, Mathf.Clamp(currentLength, 0, startValue.Length));
                 tweenInfo.SetValue(currentValue);
             };
+            yield return AnimateCore(shrinkUpdater, shrinkDuration);
 
-            return AnimateCore(updater, duration);
+            // 4. Fase de Crescer: Anima do prefixo comum até o toValue.
+            int growStartLength = commonPrefix.Length;
+            int growEndLength = toValue.Length;
+            Action<float> growUpdater = p => {
+                float easedProgress = GetEasedProgress(easing, p);
+                int currentLength = Mathf.RoundToInt(Mathf.Lerp(growStartLength, growEndLength, easedProgress));
+                string currentValue = toValue.Substring(0, Mathf.Clamp(currentLength, 0, toValue.Length));
+                tweenInfo.SetValue(currentValue);
+            };
+            yield return AnimateCore(growUpdater, growDuration);
         }
+
 
         /// <summary>
         /// Calculates the eased progress for a given Easing type.
@@ -351,70 +376,6 @@ namespace AnimaTween
             }
 
             return n1 * (x -= 2.625f / d1) * x + 0.984375f;
-        }
-        
-        /// <summary>
-        /// Interpola linearmente entre dois Rects. Uma função auxiliar para compatibilidade com versões mais antigas do Unity.
-        /// </summary>
-        /// <summary>
-        /// Interpola linearmente entre dois Rects usando Vector2.Lerp para posição e tamanho.
-        /// </summary>
-        private static Rect LerpRect(Rect a, Rect b, float t)
-        {
-            // Interpola a posição (x, y) como um Vector2
-            Vector2 newPosition = Vector2.Lerp(a.position, b.position, t);
-    
-            // Interpola o tamanho (width, height) como um Vector2
-            Vector2 newSize = Vector2.Lerp(a.size, b.size, t);
-
-            return new Rect(newPosition, newSize);
-        }
-        
-        /// <summary>
-        /// Interpola linearmente entre dois Bounds.
-        /// </summary>
-        private static Bounds LerpBounds(Bounds a, Bounds b, float t)
-        {
-            Vector3 center = Vector3.Lerp(a.center, b.center, t);
-            Vector3 size = Vector3.Lerp(a.size, b.size, t);
-            return new Bounds(center, size);
-        }
-        
-        /// <summary>
-        /// Interpola entre dois gradientes amostrando-os em vários pontos.
-        /// </summary>
-        /// <param name="a">O gradiente inicial.</param>
-        /// <param name="b">O gradiente final.</param>
-        /// <param name="t">O progresso da interpolação (0 a 1).</param>
-        /// <param name="resolution">O número de amostras a retirar. Mais alto é mais preciso, mas mais lento.</param>
-        /// <returns>Um novo gradiente que é a mistura dos dois.</returns>
-        private static Gradient LerpGradient(Gradient a, Gradient b, float t, int resolution = 16)
-        {
-            var newGradient = new Gradient();
-
-            // Cria os arrays para as novas chaves de cor e alfa.
-            var colorKeys = new GradientColorKey[resolution];
-            var alphaKeys = new GradientAlphaKey[resolution];
-
-            for (int i = 0; i < resolution; i++)
-            {
-                // Calcula a posição da amostra atual (de 0 a 1).
-                float samplePos = (float)i / (resolution - 1);
-
-                // Obtém a cor de cada gradiente nesta posição.
-                Color colorA = a.Evaluate(samplePos);
-                Color colorB = b.Evaluate(samplePos);
-
-                // Interpola entre as duas cores amostradas.
-                Color finalColor = Color.Lerp(colorA, colorB, t);
-
-                // Cria as novas chaves de cor e alfa.
-                colorKeys[i] = new GradientColorKey(finalColor, samplePos);
-                alphaKeys[i] = new GradientAlphaKey(finalColor.a, samplePos);
-            }
-
-            newGradient.SetKeys(colorKeys, alphaKeys);
-            return newGradient;
         }
     }
 }

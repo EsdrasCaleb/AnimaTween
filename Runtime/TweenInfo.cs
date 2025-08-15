@@ -91,7 +91,7 @@ namespace AnimaTween
                 {
                     case "position": _vector3Setter = (v) => rb3d.position = v; return;
                     case "rotation": _quaternionSetter = (q) => rb3d.rotation = q; return;
-                    case "velocity": _vector3Setter = (v) => rb3d.velocity = v; return;
+                    case "velocity": _vector3Setter = (v) => rb3d.linearVelocity = v; return;
                     case "angularVelocity": _vector3Setter = (v) => rb3d.angularVelocity = v; return;
                 }
             }
@@ -102,7 +102,7 @@ namespace AnimaTween
                 {
                     case "position": _vector2Setter = (v) => rb2d.position = v; return;
                     case "rotation": _floatSetter = (f) => rb2d.rotation = f; return;
-                    case "velocity": _vector2Setter = (v) => rb2d.velocity = v; return;
+                    case "velocity": _vector2Setter = (v) => rb2d.linearVelocity = v; return;
                     case "angularVelocity": _floatSetter = (f) => rb2d.angularVelocity = f; return;
                 }
             }
@@ -225,6 +225,7 @@ namespace AnimaTween
             // --- Attempt to use the optimized setters first ---
             if (_floatSetter != null && value is float f) { _floatSetter(f); return; }
             if (_intSetter != null && value is int i) { _intSetter(i); return; }
+            if (_intSetter != null && value is double d) { _doubleSetter(d); return; }
             if (_stringSetter != null && value is string s) { _stringSetter(s); return; }
             if (_colorSetter != null && value is Color c) { _colorSetter(c); return; }
             if (_gradientSetter != null && value is Gradient g) { _gradientSetter(g); return; }
@@ -237,6 +238,135 @@ namespace AnimaTween
             // --- If no specific setter exists, use the reflection fallback ---
             if (FieldInfo != null) FieldInfo.SetValue(Target, value);
             else PropertyInfo?.SetValue(Target, value);
+        }
+
+        public void SetProgress(float getEasedProgress)
+        {
+            Type targetType = StartValue.GetType();
+            if (targetType == typeof(float) || targetType == typeof(int) || targetType == typeof(double))
+            {
+                // Usa double para todos os cálculos para manter a máxima precisão.
+                double startNum = Convert.ToDouble(StartValue);
+                double endNum = Convert.ToDouble(ToValue);
+    
+                
+                // Lerp manual para double
+                double val = startNum + (endNum - startNum) * getEasedProgress;
+
+                // Converte de volta para o tipo original antes de definir o valor.
+                if (targetType == typeof(float))
+                {
+                    _floatSetter((float)val);
+                }
+                else if (targetType == typeof(int))
+                {
+                    _intSetter(Convert.ToInt32(Math.Round(val)));
+                }
+                else // double
+                {
+                    _doubleSetter(val);
+                }
+            }
+            else if (targetType == typeof(Rect))
+            {
+                _rectSetter(LerpRect((Rect)StartValue, (Rect)ToValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Bounds))
+            {
+                _boundsSetter(LerpBounds((Bounds)StartValue, (Bounds)ToValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Vector3))
+            {
+                _vector3Setter(Vector3.Lerp((Vector3)StartValue, (Vector3)ToValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Vector2))
+            {
+                _vector3Setter(Vector2.Lerp((Vector2)StartValue, (Vector2)ToValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Color))
+            {
+                Color s = (Color)StartValue;
+                Color e = (Color)ToValue;
+                _colorSetter(Color.Lerp((Color)StartValue, (Color)ToValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Quaternion))
+            {
+                _quaternionSetter(Quaternion.Slerp((Quaternion)StartValue, (Quaternion)ToValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Gradient))
+            {
+                Gradient s = (Gradient)StartValue;
+                Gradient e = (Gradient)ToValue;
+                _gradientSetter(LerpGradient((Gradient)StartValue, (Gradient)ToValue, getEasedProgress));
+            }
+            else
+            {
+                Debug.LogError($"AnimaTween: Unsupported property type for tweening: {targetType.Name}");
+            }
+        }
+        
+        /// <summary>
+        /// Interpola linearmente entre dois Rects. Uma função auxiliar para compatibilidade com versões mais antigas do Unity.
+        /// </summary>
+        /// <summary>
+        /// Interpola linearmente entre dois Rects usando Vector2.Lerp para posição e tamanho.
+        /// </summary>
+        private Rect LerpRect(Rect a, Rect b, float t)
+        {
+            // Interpola a posição (x, y) como um Vector2
+            Vector2 newPosition = Vector2.Lerp(a.position, b.position, t);
+    
+            // Interpola o tamanho (width, height) como um Vector2
+            Vector2 newSize = Vector2.Lerp(a.size, b.size, t);
+
+            return new Rect(newPosition, newSize);
+        }
+        
+        /// <summary>
+        /// Interpola linearmente entre dois Bounds.
+        /// </summary>
+        private Bounds LerpBounds(Bounds a, Bounds b, float t)
+        {
+            Vector3 center = Vector3.Lerp(a.center, b.center, t);
+            Vector3 size = Vector3.Lerp(a.size, b.size, t);
+            return new Bounds(center, size);
+        }
+        
+        /// <summary>
+        /// Interpola entre dois gradientes amostrando-os em vários pontos.
+        /// </summary>
+        /// <param name="a">O gradiente inicial.</param>
+        /// <param name="b">O gradiente final.</param>
+        /// <param name="t">O progresso da interpolação (0 a 1).</param>
+        /// <param name="resolution">O número de amostras a retirar. Mais alto é mais preciso, mas mais lento.</param>
+        /// <returns>Um novo gradiente que é a mistura dos dois.</returns>
+        private Gradient LerpGradient(Gradient a, Gradient b, float t, int resolution = 16)
+        {
+            var newGradient = new Gradient();
+
+            // Cria os arrays para as novas chaves de cor e alfa.
+            var colorKeys = new GradientColorKey[resolution];
+            var alphaKeys = new GradientAlphaKey[resolution];
+
+            for (int i = 0; i < resolution; i++)
+            {
+                // Calcula a posição da amostra atual (de 0 a 1).
+                float samplePos = (float)i / (resolution - 1);
+
+                // Obtém a cor de cada gradiente nesta posição.
+                Color colorA = a.Evaluate(samplePos);
+                Color colorB = b.Evaluate(samplePos);
+
+                // Interpola entre as duas cores amostradas.
+                Color finalColor = Color.Lerp(colorA, colorB, t);
+
+                // Cria as novas chaves de cor e alfa.
+                colorKeys[i] = new GradientColorKey(finalColor, samplePos);
+                alphaKeys[i] = new GradientAlphaKey(finalColor.a, samplePos);
+            }
+
+            newGradient.SetKeys(colorKeys, alphaKeys);
+            return newGradient;
         }
     }
 }

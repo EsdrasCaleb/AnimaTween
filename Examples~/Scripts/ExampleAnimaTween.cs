@@ -123,7 +123,12 @@ namespace AnimaTween
             image.ATween("color", Color.yellow, 1.5f, Easing.InOutSine, onComplete: () =>
             {
                 image.AFade(1.5f);
-                textArea2.AFade(1.5f);
+                textArea2.AFade(1.5f,onComplete: () =>
+                    {
+                        textArea2.text = "";
+                        textArea2.AFade(0.1f, toAlpha: 1f);
+                    }
+                );
                 // 10. Write "Tweens can also control audio" to the first text area.
                 textArea1.AFade(0.1f, toAlpha: 1f); // Make it visible instantly before writing
                 textArea1.ATween("text", "Tweens can also control audio", 2.5f, Easing.Linear);
@@ -134,20 +139,19 @@ namespace AnimaTween
 
         void MusicalChange()
         {
-            music.ATween("pitch", 1.2f, 3.0f,
-                Easing.OutInElastic, fromValue: 0.8, onComplete: () =>
+            textArea2.ATween("text","14",3.0f,Easing.OutInElastic,
+                onComplete:()=>textArea2.text="1",fromValue:"10");
+            music.ATween("pitch", 1.4f, 3.0f,
+                Easing.OutInElastic, fromValue: 0.4, onComplete: () =>
                 {
                     // 12. Return pitch to normal and lower the volume slightly.
                     music.ATween("pitch", 1.0f, 0.5f);
+                    textArea2.ATween("text","10",1.0f,fromValue:"6");
                     music.ATween("volume", 0.6f, 1.0f, onComplete: () =>
                     {
-                        // 13. Erase textArea1.
-                        textArea1.ATween("text", "", 2f, Easing.Linear);
-
+                        textArea2.AFade(1f);
                         // 14. Simultaneously, write "Tweens can also control physics" to textArea2.
-                        textArea2.text = "";
-                        textArea2.AFade(0.1f, toAlpha: 1f); // Make it visible instantly
-                        textArea2.ATween("text", "Tweens can also control physics", 2.5f, Easing.Linear,
+                        textArea1.ATween("text", "Tweens can also control physics", 2.5f, Easing.Linear,
                             onComplete: () =>
                             {
                                 // 15 & 16. Stop rotation, enable physics, and start physics-based effects.
@@ -190,13 +194,13 @@ namespace AnimaTween
                         playback: Playback.LoopForward);
                 });
             
-            
-            textArea1.ATween("text", "Control Tweens...", 2.0f, Easing.Linear);
+            textArea2.AFade(1.5f,toAlpha:1f);
+            textArea2.ATween("text", "Control Tweens...", 2.0f, Easing.Linear);
             // 17. After a few seconds, stop the physics and write the final message.
             this.ATimeout(3.0f, () =>
             {
-                textArea2.AFade(1f);
-                textArea1.ATween("text", "Control Tweens... Control the GAME!", 2.0f, Easing.Linear);
+                textArea1.AFade(1f);
+                textArea2.ATween("text", "Control Tweens... Control the GAME!", 2.0f, Easing.Linear);
                 // Stop physics timers and scale animation.
                 this.ACompleteTimer();
 
