@@ -31,6 +31,7 @@ namespace AnimaTween
         private Action<Bounds> _boundsSetter;
         private Action<string> _stringSetter;
         private Action<Gradient> _gradientSetter;
+        private bool material_prop;
 
 
 
@@ -47,7 +48,7 @@ namespace AnimaTween
         /// and, if it can't, falls back to reflection.
         /// </summary>
         public TweenInfo(object target, string propertyName, Action onComplete, object startValue, object toValue, 
-            PropertyInfo propertyInfo, FieldInfo fieldInfo)
+            PropertyInfo propertyInfo, FieldInfo fieldInfo, bool materialProp=false)
         {
             Target = target;
             OnComplete = onComplete;
@@ -141,7 +142,13 @@ namespace AnimaTween
             {
                 // Note: This modifies the shared material asset. A better practice for individual
                 // objects is to use renderer.material to create an instance first.
-                if (propertyName == "color") { _colorSetter = (c) => m.color = c; return; }
+                if (material_prop)
+                {
+                    _floatSetter = (f) => m.SetFloat(propertyName, f);
+                    _colorSetter = (c) => m.SetColor(propertyName, c);
+                    _vector4Setter = (v) => m.SetVector(propertyName, v);
+                }
+                else if (propertyName == "color") { _colorSetter = (c) => m.color = c; return; }
             }
             // Light
             else if (target is Light l)

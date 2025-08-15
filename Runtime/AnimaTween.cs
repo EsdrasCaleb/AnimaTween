@@ -91,13 +91,36 @@ namespace AnimaTween
 
             FieldInfo fieldInfo = target.GetType().GetField(propertyName, BindingFlags.Public | BindingFlags.Instance);
             PropertyInfo propertyInfo = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
-            
-            if (fieldInfo == null && propertyInfo == null)
+            object startValue;
+            bool materialProp = false;
+            if (target is Material material)
             {
-                Debug.LogError($"AnimaTween: Propriedade ou Campo '{propertyName}' não encontrado ou não é público em '{target.GetType().Name}'.");
-                return;
+                materialProp = true;
+                // Para materiais, o tipo do 'toValue' nos diz qual método 'Get' usar para obter o valor inicial.
+                if (toValue is float)
+                {
+                    startValue = material.GetFloat(propertyName);
+                }
+                else if (toValue is Color)
+                {
+                    startValue = material.GetColor(propertyName);
+                }
+                else if (toValue is Vector4) // Comum para propriedades de shader como _TilingOffset
+                {
+                    startValue = material.GetVector(propertyName);
+                }
+                // Adicione outros tipos como int (SetInt/GetInt) se necessário.
+                else
+                {
+                    Debug.LogError($"AnimaTween: O tipo de valor '{toValue.GetType().Name}' não é suportado para animar propriedades de shader de Material chamadas '{propertyName}'.");
+                    return;
+                }
             }
-            object startValue = fieldInfo != null ? fieldInfo.GetValue(target) : propertyInfo.GetValue(target);
+            else
+            {
+                startValue = fieldInfo != null ? fieldInfo.GetValue(target) : propertyInfo.GetValue(target);
+            }
+
             if (fromValue!= null && startValue.GetType() == fromValue.GetType())
             {
                 startValue = fromValue;
@@ -124,7 +147,8 @@ namespace AnimaTween
                 startValue,
                 toValue,
                 propertyInfo,
-                fieldInfo
+                fieldInfo,
+                materialProp
             );
             tweenInfo.Coroutine = host.StartCoroutine(
                 TweenConductorCoroutine(host, propertyName, tweenInfo, duration, easing, playback)
