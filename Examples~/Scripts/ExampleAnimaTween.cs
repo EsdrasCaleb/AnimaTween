@@ -140,7 +140,7 @@ namespace AnimaTween
         void MusicalChange()
         {
             textArea2.ATween("text","14",3.0f,Easing.OutInElastic,
-                onComplete:()=>textArea2.text="1",fromValue:"10");
+                onComplete:()=>textArea2.text="1",fromValue:"4");
             music.ATween("pitch", 1.4f, 3.0f,
                 Easing.OutInElastic, fromValue: 0.4, onComplete: () =>
                 {

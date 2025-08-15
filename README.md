@@ -5,7 +5,7 @@ A simple and flexible way to animate fields and properties of your objects direc
 
 Say goodbye to complex setups and hello to smooth, code-driven animation. The API design is heavily inspired by the beloved libraries of the Defold engine.
 
-[![AnimaTween Showcase](Examples~/Images/animatween.gif)](https://youtu.be/nTCLchP_ZNk)
+[![AnimaTween Showcase](Examples~/Images/animatween.gif)](https://youtu.be/mOSmReV_M7E)
 
 ---
 
