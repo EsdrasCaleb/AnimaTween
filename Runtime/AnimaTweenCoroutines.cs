@@ -14,7 +14,7 @@ namespace AnimaTween
         /// </summary>
         public static bool IsTargetDestroyed(object target)
         {
-            return target is UnityEngine.Object obj && obj == null;
+            return target == null;
         }
 
         /// <summary>

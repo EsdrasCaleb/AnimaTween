@@ -242,6 +242,7 @@ namespace AnimaTween
 
         public void SetProgress(float getEasedProgress)
         {
+            if (AnimaTweenCoroutines.IsTargetDestroyed(Target)) return;
             Type targetType = StartValue.GetType();
             if (targetType == typeof(float) || targetType == typeof(int) || targetType == typeof(double))
             {
