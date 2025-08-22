@@ -93,36 +93,49 @@ namespace AnimaTween
             PropertyInfo propertyInfo = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
             object startValue;
             bool materialProp = false;
-            if (target is Material material)
+            // Se encontrarmos um campo ou propriedade C# que seja gravável...
+            if ((fieldInfo != null) || (propertyInfo != null && propertyInfo.CanWrite))
             {
-                materialProp = true;
-                // Para materiais, o tipo do 'toValue' nos diz qual método 'Get' usar para obter o valor inicial.
-                if (toValue is float)
+                // ... usamos a lógica de reflection padrão.
+                startValue = fieldInfo != null ? fieldInfo.GetValue(target) : propertyInfo.GetValue(target);
+            }
+            else 
+            {
+                // ...verificamos se o alvo é um Material, pois pode ser uma propriedade de shader.
+                if (target is Material material)
                 {
-                    startValue = material.GetFloat(propertyName);
+                    // Para materiais, o tipo do 'toValue' nos diz qual método 'Get' usar para obter o valor inicial do shader.
+                    switch (toValue)
+                    {
+                        case float f:
+                            startValue = material.GetFloat(propertyName);
+                            break;
+                        case int i:
+                            startValue = material.GetInt(propertyName);
+                            break;
+                        case Color c:
+                            startValue = material.GetColor(propertyName);
+                            break;
+                        case Vector4 v4:
+                            startValue = material.GetVector(propertyName);
+                            break;
+                        case Vector3 v3:
+                            startValue = material.GetVector(propertyName);
+                            break;
+                        case Vector2 v2:
+                            startValue = material.GetVector(propertyName);
+                            break;
+                        default:
+                            Debug.LogError($"AnimaTween: Value type '{toValue.GetType().Name}' is not supported for animating Material shader properties named '{propertyName}'.");
+                            return;
+                    }
                 }
-                else if (toValue is int)
-                {
-                    startValue = material.GetInt(propertyName);
-                }
-                else if (toValue is Color)
-                {
-                    startValue = material.GetColor(propertyName);
-                }
-                else if (toValue is Vector4) // Comum para propriedades de shader como _TilingOffset
-                {
-                    startValue = material.GetVector(propertyName);
-                }
-                // Adicione outros tipos como int (SetInt/GetInt) se necessário.
                 else
                 {
-                    Debug.LogError($"AnimaTween: O tipo de valor '{toValue.GetType().Name}' não é suportado para animar propriedades de shader de Material chamadas '{propertyName}'.");
+                    // Se não for um Material e não encontrarmos um campo/propriedade gravável, então é um erro.
+                    Debug.LogError($"AnimaTween: Property or Field '{propertyName}' not found, is not public, or is read-only in '{target.GetType().Name}'.");
                     return;
                 }
-            }
-            else
-            {
-                startValue = fieldInfo != null ? fieldInfo.GetValue(target) : propertyInfo.GetValue(target);
             }
 
             if (fromValue!= null && startValue.GetType() == fromValue.GetType())

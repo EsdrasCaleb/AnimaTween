@@ -26,6 +26,8 @@ namespace AnimaTween
         private Action<Vector2> _vector2Setter;
         private Action<Vector3> _vector3Setter;
         private Action<Vector4> _vector4Setter;
+        private Action<Vector2Int> _vector2IntSetter;
+        private Action<Vector3Int> _vector3IntSetter;
         private Action<Quaternion> _quaternionSetter;
         private Action<Rect> _rectSetter;
         private Action<Bounds> _boundsSetter;
@@ -139,16 +141,46 @@ namespace AnimaTween
             // Material
             else if (target is Material m)
             {
-                // Note: This modifies the shared material asset. A better practice for individual
-                // objects is to use renderer.material to create an instance first.
-                if (materialProp)
+                // Se a propriedade for "color", usamos o atalho otimizado.
+                if (propertyName == "color") 
                 {
-                    _floatSetter = (f) => m.SetFloat(propertyName, f);
-                    _intSetter = (i) => m.SetInt(propertyName, i);
-                    _colorSetter = (c) => m.SetColor(propertyName, c);
-                    _vector4Setter = (v) => m.SetVector(propertyName, v);
+                    _colorSetter = (c) => m.color = c;
+                    return;
                 }
-                else if (propertyName == "color") { _colorSetter = (c) => m.color = c; return; }
+                else if (materialProp)
+                {
+                    switch (ToValue)
+                    {
+                        case float f:
+                            _floatSetter = (val) => m.SetFloat(propertyName, val);
+                            return;
+                        case int i:
+                            _intSetter = (val) => m.SetInt(propertyName, val);
+                            return;
+                        case Color c:
+                            _colorSetter = (val) => m.SetColor(propertyName, val);
+                            return;
+                        case Vector4 v4:
+                            _vector4Setter = (val) => m.SetVector(propertyName, val);
+                            return;
+                        case Vector3 v3:
+                            // Shaders usam Vector4, então promovemos o Vector3.
+                            _vector3Setter = (val) => m.SetVector(propertyName, val);
+                            return;
+                        case Vector2 v2:
+                            // Shaders usam Vector4, então promovemos o Vector2.
+                            _vector2Setter = (val) => m.SetVector(propertyName, val);
+                            return;
+                        case Vector3Int v3i:
+                            // Cast explícito de Vector3Int para Vector3
+                            _vector3IntSetter = (val) => m.SetVector(propertyName, (Vector3)val);
+                            break;
+                        case Vector2Int v2i:
+                            // Cast explícito de Vector2Int para Vector2
+                            _vector2IntSetter = (val) => m.SetVector(propertyName, (Vector2)val);
+                            break;
+                    }
+                }
             }
             // Light
             else if (target is Light l)
@@ -209,18 +241,52 @@ namespace AnimaTween
         /// </summary>
         private void CreateTypedSetter(Type memberType, Action<object> setter)
         {
-            if (memberType == typeof(float)) _floatSetter = (v) => setter(v);
-            else if (memberType == typeof(double)) _doubleSetter = (v) => setter(v);
-            else if (memberType == typeof(int)) _intSetter = (v) => setter(v);
-            else if (memberType == typeof(string)) _stringSetter = (v) => setter(v);
-            else if (memberType == typeof(Color)) _colorSetter = (v) => setter(v);
-            else if (memberType == typeof(Vector2)) _vector2Setter = (v) => setter(v);
-            else if (memberType == typeof(Vector3)) _vector3Setter = (v) => setter(v);
-            else if (memberType == typeof(Vector4)) _vector4Setter = (v) => setter(v);
-            else if (memberType == typeof(Quaternion)) _quaternionSetter = (v) => setter(v);
-            else if (memberType == typeof(Rect)) _rectSetter = (v) => setter(v);
-            else if (memberType == typeof(Bounds)) _boundsSetter = (v) => setter(v);
-            else if (memberType == typeof(Gradient)) _gradientSetter = (v) => setter(v);
+            switch (memberType.Name)
+            {
+                case "Single": // Nome do tipo para float
+                    _floatSetter = (v) => setter(v);
+                    break;
+                case "Double":
+                    _doubleSetter = (v) => setter(v);
+                    break;
+                case "Int32": // Nome do tipo para int
+                    _intSetter = (v) => setter(v);
+                    break;
+                case "String":
+                    _stringSetter = (v) => setter(v);
+                    break;
+                case "Color":
+                    _colorSetter = (v) => setter(v);
+                    break;
+                case "Vector2":
+                    _vector2Setter = (v) => setter(v);
+                    break;
+                case "Vector3":
+                    _vector3Setter = (v) => setter(v);
+                    break;
+                case "Vector4":
+                    _vector4Setter = (v) => setter(v);
+                    break;
+                case "Quaternion":
+                    _quaternionSetter = (v) => setter(v);
+                    break;
+                case "Rect":
+                    _rectSetter = (v) => setter(v);
+                    break;
+                case "Bounds":
+                    _boundsSetter = (v) => setter(v);
+                    break;
+                case "Gradient":
+                    _gradientSetter = (v) => setter(v);
+                    break;
+                // Tipos extras para maior compatibilidade
+                case "Vector2Int":
+                    _vector2IntSetter = (v) => setter(v);
+                    break;
+                case "Vector3Int":
+                    _vector3IntSetter = (v) => setter(v);
+                    break;
+            }
         }
 
         // --- SetValue methods are now extremely simple and fast ---
@@ -233,6 +299,8 @@ namespace AnimaTween
         public void SetValue(Vector2 value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector2Setter?.Invoke(value); }
         public void SetValue(Vector3 value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector3Setter?.Invoke(value); }
         public void SetValue(Vector4 value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector4Setter?.Invoke(value); }
+        public void SetValue(Vector2Int value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector2IntSetter?.Invoke(value); }
+        public void SetValue(Vector3Int value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector3IntSetter?.Invoke(value); }
         public void SetValue(Quaternion value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _quaternionSetter?.Invoke(value); }
         public void SetValue(Rect value)    { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _rectSetter?.Invoke(value); }
         public void SetValue(Bounds value)  { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _boundsSetter?.Invoke(value); }
@@ -305,6 +373,14 @@ namespace AnimaTween
             else if (targetType == typeof(Vector2))
             {
                 _vector3Setter(Vector2.Lerp((Vector2)StartValue, (Vector2)ToValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Vector2Int))
+            {
+                _vector2IntSetter(Vector2Int.RoundToInt(Vector2.Lerp((Vector2Int)StartValue, (Vector2Int)ToValue, getEasedProgress)));
+            }
+            else if (targetType == typeof(Vector3Int))
+            {
+                _vector3IntSetter(Vector3Int.RoundToInt(Vector3.Lerp((Vector3Int)StartValue, (Vector3Int)ToValue, getEasedProgress)));
             }
             else if (targetType == typeof(Color))
             {
