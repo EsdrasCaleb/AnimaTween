@@ -147,7 +147,7 @@ namespace AnimaTween
                     _colorSetter = (c) => m.color = c;
                     return;
                 }
-                else if (materialProp)
+                if (materialProp)
                 {
                     switch (ToValue)
                     {
@@ -174,10 +174,13 @@ namespace AnimaTween
                         case Vector3Int v3i:
                             // Cast explícito de Vector3Int para Vector3
                             _vector3IntSetter = (val) => m.SetVector(propertyName, (Vector3)val);
-                            break;
+                            return;
                         case Vector2Int v2i:
                             // Cast explícito de Vector2Int para Vector2
                             _vector2IntSetter = (val) => m.SetVector(propertyName, (Vector2)val);
+                            return;
+                        default:
+                            Debug.Log($"Cant find type {ToValue}");
                             break;
                     }
                 }
@@ -346,56 +349,56 @@ namespace AnimaTween
                 // Converte de volta para o tipo original antes de definir o valor.
                 if (targetType == typeof(float))
                 {
-                    SetValue((float)val);
+                    _floatSetter((float)val);
                 }
                 else if (targetType == typeof(int))
                 {
-                    SetValue((int)Math.Round(val));
+                    _intSetter((int)Math.Round(val));
                 }
                 else // double
                 {
-                    SetValue(val);
+                    _doubleSetter(val);
                 }
             }
             else if (targetType == typeof(Rect))
             {
-                SetValue(LerpRect((Rect)StartValue, (Rect)ToValue, getEasedProgress));
+                _rectSetter(LerpRect((Rect)StartValue, (Rect)ToValue, getEasedProgress));
             }
             else if (targetType == typeof(Bounds))
             {
-                SetValue(LerpBounds((Bounds)StartValue, (Bounds)ToValue, getEasedProgress));
+                _boundsSetter(LerpBounds((Bounds)StartValue, (Bounds)ToValue, getEasedProgress));
             }
             else if (targetType == typeof(Vector3))
             {
-                SetValue(Vector3.Lerp((Vector3)StartValue, (Vector3)ToValue, getEasedProgress));
+                _vector3Setter(Vector3.Lerp((Vector3)StartValue, (Vector3)ToValue, getEasedProgress));
             }
             else if (targetType == typeof(Vector2))
             {
-                SetValue(Vector2.Lerp((Vector2)StartValue, (Vector2)ToValue, getEasedProgress));
+                _vector3Setter(Vector2.Lerp((Vector2)StartValue, (Vector2)ToValue, getEasedProgress));
             }
             else if (targetType == typeof(Vector2Int))
             {
-                SetValue(Vector2Int.RoundToInt(Vector2.Lerp((Vector2Int)StartValue, (Vector2Int)ToValue, getEasedProgress)));
+                _vector2IntSetter(Vector2Int.RoundToInt(Vector2.Lerp((Vector2Int)StartValue, (Vector2Int)ToValue, getEasedProgress)));
             }
             else if (targetType == typeof(Vector3Int))
             {
-                SetValue(Vector3Int.RoundToInt(Vector3.Lerp((Vector3Int)StartValue, (Vector3Int)ToValue, getEasedProgress)));
+                _vector3IntSetter(Vector3Int.RoundToInt(Vector3.Lerp((Vector3Int)StartValue, (Vector3Int)ToValue, getEasedProgress)));
             }
             else if (targetType == typeof(Color))
             {
                 Color s = (Color)StartValue;
                 Color e = (Color)ToValue;
-                SetValue(Color.Lerp((Color)StartValue, (Color)ToValue, getEasedProgress));
+                _colorSetter(Color.Lerp((Color)StartValue, (Color)ToValue, getEasedProgress));
             }
             else if (targetType == typeof(Quaternion))
             {
-                SetValue(Quaternion.Slerp((Quaternion)StartValue, (Quaternion)ToValue, getEasedProgress));
+                _quaternionSetter(Quaternion.Slerp((Quaternion)StartValue, (Quaternion)ToValue, getEasedProgress));
             }
             else if (targetType == typeof(Gradient))
             {
                 Gradient s = (Gradient)StartValue;
                 Gradient e = (Gradient)ToValue;
-                SetValue(LerpGradient((Gradient)StartValue, (Gradient)ToValue, getEasedProgress));
+                _gradientSetter(LerpGradient((Gradient)StartValue, (Gradient)ToValue, getEasedProgress));
             }
             else
             {

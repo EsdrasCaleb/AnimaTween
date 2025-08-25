@@ -85,7 +85,7 @@ namespace AnimaTween
             object fromValue = null)
         {
             // Stops any previous tween on the same property
-            var host = GetHostForTarget(target);
+            MonoBehaviour host = GetHostForTarget(target);
             if (host == null) return;
             target.AComplete(propertyName, internalCall: true);
 
@@ -93,7 +93,6 @@ namespace AnimaTween
             PropertyInfo propertyInfo = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
             object startValue;
             bool materialProp = false;
-            // Se encontrarmos um campo ou propriedade C# que seja gravável...
             if ((fieldInfo != null) || (propertyInfo != null && propertyInfo.CanWrite))
             {
                 // ... usamos a lógica de reflection padrão.
@@ -104,6 +103,7 @@ namespace AnimaTween
                 // ...verificamos se o alvo é um Material, pois pode ser uma propriedade de shader.
                 if (target is Material material)
                 {
+                    materialProp = true;
                     // Para materiais, o tipo do 'toValue' nos diz qual método 'Get' usar para obter o valor inicial do shader.
                     switch (toValue)
                     {
@@ -167,6 +167,7 @@ namespace AnimaTween
                 fieldInfo,
                 materialProp
             );
+
             tweenInfo.Coroutine = host.StartCoroutine(
                 TweenConductorCoroutine(host, propertyName, tweenInfo, duration, easing, playback)
             );
@@ -367,13 +368,14 @@ namespace AnimaTween
                     return; // Encontrou e completou, pode sair.
                 }
             }
-            
+
             // Se não encontrou no local, tenta no runner global
             if (_globalRunner != null)
             {
                 var key = new Tuple<object, string>(target, propertyName);
                 if (_globalRunner.unhostedTweens.TryGetValue(key, out TweenInfo tweenInfo))
                 {
+                    Debug.Log($"COmpleted in global");
                     _globalRunner.StopCoroutine(tweenInfo.Coroutine);
                     if (endState == EndState.End && tweenInfo.ToValue != null) tweenInfo.SetValue(tweenInfo.ToValue);
                     else if (endState == EndState.Start && tweenInfo.StartValue != null) tweenInfo.SetValue(tweenInfo.StartValue);
