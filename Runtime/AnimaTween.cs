@@ -339,7 +339,7 @@ namespace AnimaTween
              EndState endState=EndState.End,bool internalCall = false)
         {
             // --- Lógica para completar todos os tweens de um alvo ---
-            if (string.IsNullOrEmpty(propertyName))
+            if (string.IsNullOrEmpty(propertyName)&&!internalCall)
             {
                 // Checa a instância local
                 if (target is Component c && c.TryGetComponent<AnimaTweenInstance>(out var instance))
@@ -375,7 +375,6 @@ namespace AnimaTween
                 var key = new Tuple<object, string>(target, propertyName);
                 if (_globalRunner.unhostedTweens.TryGetValue(key, out TweenInfo tweenInfo))
                 {
-                    Debug.Log($"COmpleted in global");
                     _globalRunner.StopCoroutine(tweenInfo.Coroutine);
                     if (endState == EndState.End && tweenInfo.ToValue != null) tweenInfo.SetValue(tweenInfo.ToValue);
                     else if (endState == EndState.Start && tweenInfo.StartValue != null) tweenInfo.SetValue(tweenInfo.StartValue);
