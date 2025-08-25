@@ -338,7 +338,7 @@ namespace AnimaTween
              EndState endState=EndState.End,bool internalCall = false)
         {
             // --- Lógica para completar todos os tweens de um alvo ---
-            if (string.IsNullOrEmpty(propertyName))
+            if (string.IsNullOrEmpty(propertyName)&& !internalCall)
             {
                 // Checa a instância local
                 if (target is Component c && c.TryGetComponent<AnimaTweenInstance>(out var instance))
