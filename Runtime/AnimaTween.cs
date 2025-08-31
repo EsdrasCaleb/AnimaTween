@@ -362,7 +362,7 @@ namespace AnimaTween
                     localInstance.StopCoroutine(tweenInfo.Coroutine);
                     if (endState == EndState.End && tweenInfo.ToValue != null) tweenInfo.SetValue(tweenInfo.ToValue);
                     else if (endState == EndState.Start && tweenInfo.StartValue != null) tweenInfo.SetValue(tweenInfo.StartValue);
-                    if (withCallback) tweenInfo.OnComplete?.Invoke();
+                    if (withCallback && !internalCall) tweenInfo.OnComplete?.Invoke();
                     localInstance.activeTweens.Remove(propertyName);
                     localInstance.MarkAsDirty();
                     return; // Encontrou e completou, pode sair.
@@ -378,7 +378,7 @@ namespace AnimaTween
                     _globalRunner.StopCoroutine(tweenInfo.Coroutine);
                     if (endState == EndState.End && tweenInfo.ToValue != null) tweenInfo.SetValue(tweenInfo.ToValue);
                     else if (endState == EndState.Start && tweenInfo.StartValue != null) tweenInfo.SetValue(tweenInfo.StartValue);
-                    if (withCallback) tweenInfo.OnComplete?.Invoke();
+                    if (withCallback && !internalCall) tweenInfo.OnComplete?.Invoke();
                     _globalRunner.RemoveUnhostedTween(key);
                 }
             }
