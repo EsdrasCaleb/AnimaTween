@@ -95,16 +95,13 @@ namespace AnimaTween
             bool materialProp = false;
             if ((fieldInfo != null) || (propertyInfo != null && propertyInfo.CanWrite))
             {
-                // ... usamos a lógica de reflection padrão.
                 startValue = fieldInfo != null ? fieldInfo.GetValue(target) : propertyInfo.GetValue(target);
             }
             else 
             {
-                // ...verificamos se o alvo é um Material, pois pode ser uma propriedade de shader.
                 if (target is Material material)
                 {
                     materialProp = true;
-                    // Para materiais, o tipo do 'toValue' nos diz qual método 'Get' usar para obter o valor inicial do shader.
                     switch (toValue)
                     {
                         case float f:
@@ -145,16 +142,21 @@ namespace AnimaTween
                 else propertyInfo.SetValue(target, startValue);
             }
 
-            // Logic for animating paths (waypoints)
+            // --- NOVA LÓGICA DE CAMINHOS ---
+            object finalToValue = toValue;
+            object[] midValues = null;
+
             if (toValue is IEnumerable path && !(toValue is string))
             {
-                var waypoints = new Queue<object>(path.Cast<object>());
-                if (waypoints.Count > 0)
+                var pathList = path.Cast<object>().ToList();
+                if (pathList.Count > 0)
                 {
-                    float segmentDuration = duration / waypoints.Count;
-                    AnimatePath(target, propertyName, waypoints, segmentDuration, easing, playback, onComplete);
+                    finalToValue = pathList.Last();
+                    if (pathList.Count > 1)
+                    {
+                        midValues = pathList.Take(pathList.Count - 1).ToArray();
+                    }
                 }
-                return;
             }
             
             TweenInfo tweenInfo = new TweenInfo(
@@ -162,10 +164,11 @@ namespace AnimaTween
                 propertyName,
                 onComplete,
                 startValue,
-                toValue,
+                finalToValue,
                 propertyInfo,
                 fieldInfo,
-                materialProp
+                materialProp,
+                midValues
             );
 
             tweenInfo.Coroutine = host.StartCoroutine(
@@ -533,21 +536,6 @@ namespace AnimaTween
 
                 tweenInfo.OnComplete?.Invoke();
             }
-        }
-        
-        // Helper para animação de caminhos (inalterado)
-        private static void AnimatePath(object target, string propertyName, Queue<object> waypoints, float segmentDuration, Easing easing, Playback playback, Action onComplete)
-        {
-            if (waypoints.Count == 0)
-            {
-                onComplete?.Invoke();
-                return;
-            }
-            object nextWaypoint = waypoints.Dequeue();
-            Action nextAction = () => {
-                AnimatePath(target, propertyName, waypoints, segmentDuration, easing, playback, onComplete);
-            };
-            target.ATween(propertyName, nextWaypoint, segmentDuration, easing, nextAction, playback);
         }
     }
 }

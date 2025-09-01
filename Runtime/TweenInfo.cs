@@ -11,11 +11,17 @@ namespace AnimaTween
         // --- Propriedades Gerais ---
         public Coroutine Coroutine { get; set; }
         public Action OnComplete { get; set; }
+        // --- Sistema de Caminhos (Waypoints) ---
+        private object[] _waypoints;
+        private object _currentStartValue;
+        private object _currentEndValue;
         public object Target { get; set; }
         public object StartValue { get; set; }
         public object ToValue { get; set; }
         public FieldInfo FieldInfo { get; set; }
         public PropertyInfo PropertyInfo { get; set; }
+        // --- Delegate de Estratégia ---
+        public readonly Action<float> _progressHandler;
 
         // --- Optimized Path (Direct Access Delegates) ---
         // Delegates that store the action of setting the value directly.
@@ -49,12 +55,26 @@ namespace AnimaTween
         /// and, if it can't, falls back to reflection.
         /// </summary>
         public TweenInfo(object target, string propertyName, Action onComplete, object startValue, object toValue, 
-            PropertyInfo propertyInfo, FieldInfo fieldInfo, bool materialProp=false)
+            PropertyInfo propertyInfo, FieldInfo fieldInfo, bool materialProp=false, object[] midValues = null)
         {
             Target = target;
             OnComplete = onComplete;
             StartValue = startValue;
             ToValue = toValue;
+            if (midValues != null && midValues.Length > 0)
+            {
+                _waypoints = new object[midValues.Length + 2];
+                _waypoints[0] = startValue;
+                Array.Copy(midValues, 0, _waypoints, 1, midValues.Length);
+                _waypoints[_waypoints.Length - 1] = toValue;
+                _progressHandler = HandleWaypointProgress;
+            }
+            else
+            {
+                _currentStartValue = StartValue;
+                _currentEndValue = toValue;
+                _progressHandler = HandleSimpleProgress;
+            }
             // --- Attempt to find an optimized path for common types ---
 
             // Transform
@@ -332,15 +352,40 @@ namespace AnimaTween
             if (FieldInfo != null) FieldInfo.SetValue(Target, value);
             else PropertyInfo?.SetValue(Target, value);
         }
+        
+        public void SetProgress(float easedProgress)
+        {
+            _progressHandler(easedProgress);
+        }
+        
+        private void HandleWaypointProgress(float easedProgress)
+        {
+            int segmentCount = _waypoints.Length - 1;
+            if (segmentCount <= 0) return; // Segurança
+            
+            float progressPerSegment = 1.0f / segmentCount;
 
-        public void SetProgress(float getEasedProgress)
+            int currentSegmentIndex = Mathf.FloorToInt(easedProgress / progressPerSegment);
+            currentSegmentIndex = Mathf.Clamp(currentSegmentIndex, 0, segmentCount - 1);
+
+            _currentStartValue = _waypoints[currentSegmentIndex];
+            _currentEndValue = _waypoints[currentSegmentIndex + 1];
+
+            // Calcula o progresso DENTRO do segmento atual.
+            float progressInSegment = (easedProgress - (currentSegmentIndex * progressPerSegment)) / progressPerSegment;
+
+            // Reutiliza a lógica do tween 
+            HandleSimpleProgress(progressInSegment);
+        }
+
+        private void HandleSimpleProgress(float getEasedProgress)
         {
             Type targetType = StartValue.GetType();
             if (targetType == typeof(float) || targetType == typeof(int) || targetType == typeof(double))
             {
                 // Usa double para todos os cálculos para manter a máxima precisão.
-                double startNum = Convert.ToDouble(StartValue);
-                double endNum = Convert.ToDouble(ToValue);
+                double startNum = Convert.ToDouble(_currentStartValue);
+                double endNum = Convert.ToDouble(_currentEndValue);
     
                 
                 // Lerp manual para double
@@ -362,43 +407,43 @@ namespace AnimaTween
             }
             else if (targetType == typeof(Rect))
             {
-                _rectSetter(LerpRect((Rect)StartValue, (Rect)ToValue, getEasedProgress));
+                _rectSetter(LerpRect((Rect)_currentStartValue, (Rect)_currentEndValue, getEasedProgress));
             }
             else if (targetType == typeof(Bounds))
             {
-                _boundsSetter(LerpBounds((Bounds)StartValue, (Bounds)ToValue, getEasedProgress));
+                _boundsSetter(LerpBounds((Bounds)_currentStartValue, (Bounds)_currentEndValue, getEasedProgress));
             }
             else if (targetType == typeof(Vector3))
             {
-                _vector3Setter(Vector3.Lerp((Vector3)StartValue, (Vector3)ToValue, getEasedProgress));
+                _vector3Setter(Vector3.Lerp((Vector3)_currentStartValue, (Vector3)_currentEndValue, getEasedProgress));
             }
             else if (targetType == typeof(Vector2))
             {
-                _vector3Setter(Vector2.Lerp((Vector2)StartValue, (Vector2)ToValue, getEasedProgress));
+                _vector3Setter(Vector2.Lerp((Vector2)_currentStartValue, (Vector2)_currentEndValue, getEasedProgress));
             }
             else if (targetType == typeof(Vector2Int))
             {
-                _vector2IntSetter(Vector2Int.RoundToInt(Vector2.Lerp((Vector2Int)StartValue, (Vector2Int)ToValue, getEasedProgress)));
+                _vector2IntSetter(Vector2Int.RoundToInt(Vector2.Lerp((Vector2Int)_currentStartValue, (Vector2Int)_currentEndValue, getEasedProgress)));
             }
             else if (targetType == typeof(Vector3Int))
             {
-                _vector3IntSetter(Vector3Int.RoundToInt(Vector3.Lerp((Vector3Int)StartValue, (Vector3Int)ToValue, getEasedProgress)));
+                _vector3IntSetter(Vector3Int.RoundToInt(Vector3.Lerp((Vector3Int)_currentStartValue, (Vector3Int)_currentEndValue, getEasedProgress)));
             }
             else if (targetType == typeof(Color))
             {
-                Color s = (Color)StartValue;
-                Color e = (Color)ToValue;
-                _colorSetter(Color.Lerp((Color)StartValue, (Color)ToValue, getEasedProgress));
+                Color s = (Color)_currentStartValue;
+                Color e = (Color)_currentEndValue;
+                _colorSetter(Color.Lerp((Color)_currentStartValue, (Color)_currentEndValue, getEasedProgress));
             }
             else if (targetType == typeof(Quaternion))
             {
-                _quaternionSetter(Quaternion.Slerp((Quaternion)StartValue, (Quaternion)ToValue, getEasedProgress));
+                _quaternionSetter(Quaternion.Slerp((Quaternion)_currentStartValue, (Quaternion)_currentEndValue, getEasedProgress));
             }
             else if (targetType == typeof(Gradient))
             {
-                Gradient s = (Gradient)StartValue;
-                Gradient e = (Gradient)ToValue;
-                _gradientSetter(LerpGradient((Gradient)StartValue, (Gradient)ToValue, getEasedProgress));
+                Gradient s = (Gradient)_currentStartValue;
+                Gradient e = (Gradient)_currentEndValue;
+                _gradientSetter(LerpGradient((Gradient)_currentStartValue, (Gradient)_currentEndValue, getEasedProgress));
             }
             else
             {
