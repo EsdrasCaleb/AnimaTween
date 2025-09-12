@@ -110,18 +110,21 @@ namespace AnimaTween
                     case "maxVisibleCharacters": _intSetter = (i) => tmpText.maxVisibleCharacters = i; return;
                 }
             }
-            // RectTransform (for UI)
             else if (target is RectTransform rt)
             {
                 switch (propertyName)
                 {
                     case "anchoredPosition": _vector2Setter = (v) => rt.anchoredPosition = v; return;
                     case "sizeDelta": _vector2Setter = (v) => rt.sizeDelta = v; return;
-                    // Inherits Transform properties like localScale
+                    case "position": _vector3Setter = (v) => rt.position = v; return;
+                    case "localPosition": _vector3Setter = (v) => rt.localPosition = v; return;
+                    case "eulerAngles": _vector3Setter = (v) => rt.eulerAngles = v; return;
+                    case "localEulerAngles": _vector3Setter = (v) => rt.localEulerAngles = v; return;
                     case "localScale": _vector3Setter = (v) => rt.localScale = v; return;
+                    case "rotation": _quaternionSetter = (q) => rt.rotation = q; return;
+                    case "localRotation": _quaternionSetter = (q) => rt.localRotation = q; return;
                 }
             }
-            // **NOVO:** Suporte para Rigidbody 3D
             else if (target is Rigidbody rb3d)
             {
                 switch (propertyName)
@@ -419,7 +422,7 @@ namespace AnimaTween
             }
             else if (targetType == typeof(Vector2))
             {
-                _vector3Setter(Vector2.Lerp((Vector2)_currentStartValue, (Vector2)_currentEndValue, getEasedProgress));
+                _vector2Setter(Vector2.Lerp((Vector2)_currentStartValue, (Vector2)_currentEndValue, getEasedProgress));
             }
             else if (targetType == typeof(Vector2Int))
             {
@@ -444,6 +447,10 @@ namespace AnimaTween
                 Gradient s = (Gradient)_currentStartValue;
                 Gradient e = (Gradient)_currentEndValue;
                 _gradientSetter(LerpGradient((Gradient)_currentStartValue, (Gradient)_currentEndValue, getEasedProgress));
+            }
+            else if (targetType == typeof(Vector4))
+            {
+                _vector4Setter(Vector4.Lerp((Vector4)_currentStartValue, (Vector4)_currentEndValue, getEasedProgress));
             }
             else
             {
