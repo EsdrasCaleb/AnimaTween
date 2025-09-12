@@ -509,7 +509,7 @@ namespace AnimaTween
         /// The coroutine for handling timeouts and intervals.
         /// </summary>
         private static IEnumerator TimerCoroutine(MonoBehaviour host, object key, TweenInfo tweenInfo, float time, bool repeat)
-        
+        {
             if (repeat)
             {
                 while (true)
