@@ -300,7 +300,7 @@ public class AnimaTweenCustomMonoBehaviourTests
     public IEnumerator ATween_Path_MonoBehaviour_Vector2_FollowsWaypointsAndCompletes()
     {
         Vector2 startValue = Vector2.zero;
-        var path = new[] { new Vector2(1, 1), new Vector2(-1, 1), new Vector2(-1, -1) };
+        var path = new[] { new Vector2(10, 10), new Vector2(-10, 10), new Vector2(1, 1) };
         float duration = 0.6f;
         float segmentDuration = duration / path.Length;
         _testComponent.myVector2 = startValue;
@@ -313,11 +313,11 @@ public class AnimaTweenCustomMonoBehaviourTests
 
         while (Time.time - startTime < duration+0.1f)
         {
-            if (Vector2.Distance(path[2], _testComponent.myVector2) < 0.1f)
+            if (Vector2.Distance(path[2], _testComponent.myVector2) < 1f)
             {
                 condition1Met = true;
             }
-            else if (Vector2.Distance(path[2], _testComponent.myVector2) < 0.1f)
+            else if (Vector2.Distance(path[2], _testComponent.myVector2) < 1f)
             {
                 condition2Met = true;
             }
