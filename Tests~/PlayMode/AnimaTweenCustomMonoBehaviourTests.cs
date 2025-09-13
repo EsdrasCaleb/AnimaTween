@@ -313,11 +313,11 @@ public class AnimaTweenCustomMonoBehaviourTests
 
         while (Time.time - startTime < duration+0.1f)
         {
-            if (Vector2.Distance(path[2], _testComponent.myVector2) < 1f)
+            if (Vector2.Distance(path[0], _testComponent.myVector2) < 1f)
             {
                 condition1Met = true;
             }
-            else if (Vector2.Distance(path[2], _testComponent.myVector2) < 1f)
+            else if (Vector2.Distance(path[1], _testComponent.myVector2) < 1f)
             {
                 condition2Met = true;
             }

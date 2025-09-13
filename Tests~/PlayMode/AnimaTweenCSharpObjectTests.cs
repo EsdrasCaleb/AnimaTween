@@ -220,11 +220,11 @@ public class AnimaTweenCSharpObjectTests
 
         while (Time.time - startTime < duration+0.1f)
         {
-            if (Vector2.Distance(path[2], _testObject.myVector2) < 1f)
+            if (Vector2.Distance(path[0], _testObject.myVector2) < 1f)
             {
                 condition1Met = true;
             }
-            else if (Vector2.Distance(path[2], _testObject.myVector2) < 1f)
+            else if (Vector2.Distance(path[1], _testObject.myVector2) < 1f)
             {
                 condition2Met = true;
             }
