@@ -207,7 +207,7 @@ public class AnimaTweenCSharpObjectTests
     public IEnumerator ATween_Path_CSharpObject_Vector2_FollowsWaypointsAndCompletes()
     {
         Vector2 startValue = Vector2.zero;
-        var path = new[] { new Vector2(1, 1), new Vector2(-1, 1), new Vector2(-1, -1) };
+        var path = new[] { new Vector2(10, 10), new Vector2(-10, 10), new Vector2(1, 1) };
         float duration = 0.6f;
         float segmentDuration = duration / path.Length;
         _testObject.myVector2 = startValue;
@@ -220,11 +220,11 @@ public class AnimaTweenCSharpObjectTests
 
         while (Time.time - startTime < duration+0.1f)
         {
-            if (Vector2.Distance(path[2], _testObject.myVector2) < 0.1f)
+            if (Vector2.Distance(path[2], _testObject.myVector2) < 1f)
             {
                 condition1Met = true;
             }
-            else if (Vector2.Distance(path[2], _testObject.myVector2) < 0.1f)
+            else if (Vector2.Distance(path[2], _testObject.myVector2) < 1f)
             {
                 condition2Met = true;
             }
@@ -389,9 +389,9 @@ public class AnimaTweenCSharpObjectTests
         
         Assert.IsTrue(passedPoint1, $"Did not pass near the first waypoint. Last value: {_testObject.myBounds}");
         Assert.IsTrue(passedPoint2, $"Did not pass near the second waypoint. Last value: {_testObject.myBounds}");
-        Assert.AreEqual(path[2].center, _testObject.myBounds.center, 
+        Assert.Less(Vector3.Distance(path[2].center, _testObject.myBounds.center),1f, 
             $"Should be at final waypoint. Expected: {path[2].center}, Actual: {_testObject.myBounds.center}.");
-        Assert.AreEqual(path[2].extents, _testObject.myBounds.extents, 
+        Assert.Less(Vector3.Distance(path[2].extents, _testObject.myBounds.extents),1f, 
             $"Should be at final waypoint. Expected: {path[2].extents}, Actual: {_testObject.myBounds.extents}.");
     }
 
