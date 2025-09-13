@@ -13,10 +13,10 @@ public class AnimaTweenMaterialTests
     [SetUp]
     public void Setup()
     {
-        // CORREÇÃO: Usa PrimitiveType.Cube em vez de MeshType.Cube
         _testObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        // Criamos uma instância do material para que as alterações não afetem outros objetos.
-        _testMaterial = _testObject.GetComponent<MeshRenderer>().material;
+        _testMaterial = new Material((Shader.Find("Hidden/AnimaTweenTestShader")));
+        var renderer = _testObject.GetComponent<MeshRenderer>();
+        renderer.material = _testMaterial;
     }
 
     // Limpeza: Destrói o objeto de teste após cada teste.
@@ -24,6 +24,7 @@ public class AnimaTweenMaterialTests
     public void Teardown()
     {
         Object.DestroyImmediate(_testObject);
+        Object.DestroyImmediate(_testMaterial);
     }
 
     // --- TESTES DE PLAY MODE ---
@@ -85,5 +86,113 @@ public class AnimaTweenMaterialTests
         // Assert
         Assert.AreEqual(targetValue, _testMaterial.GetColor(propertyName), "AComplete deve levar a cor do material ao valor final instantaneamente.");
     }
+    [UnityTest]
+    public IEnumerator ATween_Material_ColorProperty_ChangesTowardsTarget()
+    {
+        // Arrange
+        string propertyName = "_Color";
+        Color startValue = Color.black;
+        Color targetValue = Color.blue;
+        float duration = 0.4f;
+        _testMaterial.SetColor(propertyName, startValue);
+        
+        // Act
+        _testMaterial.ATween(propertyName, targetValue, duration);
+
+        // Observe
+        yield return new WaitForSeconds(duration / 2f);
+        Color midValue = _testMaterial.GetColor(propertyName);
+
+        Assert.AreNotEqual(startValue, midValue, "A cor deve ter mudado a meio do tween.");
+        // A cor a meio do caminho deve ser uma mistura, portanto, nem branca nem azul pura.
+        Assert.Greater(midValue.b, startValue.b, 
+            $"A componente azul da cor deve estar a aumentar.{startValue} {midValue}");
+        
+        yield return new WaitForSeconds(duration / 2f + 0.1f) ;
+
+        // Assert
+        Assert.AreEqual(targetValue, _testMaterial.GetColor(propertyName), "A cor final deve ser igual à cor alvo.");
+    }
+
+    [UnityTest]
+    public IEnumerator ATween_Material_FloatProperty_ChangesTowardsTarget()
+    {
+        // Arrange
+        string propertyName = "_Float";
+        float startValue = 0f;
+        float targetValue = 10f;
+        float duration = 0.4f;
+        _testMaterial.SetFloat(propertyName, startValue);
+
+        // Act
+        _testMaterial.ATween(propertyName, targetValue, duration);
+
+        // Observe
+        yield return new WaitForSeconds(duration / 2f);
+        float midValue = _testMaterial.GetFloat(propertyName);
+        
+        Assert.AreNotEqual(startValue, midValue, "O float deve ter mudado a meio do tween.");
+        Assert.IsTrue(midValue > startValue && midValue < targetValue, "O valor a meio do caminho deve estar entre o início e o fim.");
+
+        yield return new WaitForSeconds(duration / 2f);
+
+        // Assert
+        Assert.AreEqual(targetValue, _testMaterial.GetFloat(propertyName), "O float final deve ser igual ao valor alvo.");
+    }
+
+    [UnityTest]
+    public IEnumerator ATween_Material_IntProperty_ChangesTowardsTarget()
+    {
+        // Arrange
+        string propertyName = "_Int";
+        int startValue = 0;
+        int targetValue = 100;
+        float duration = 0.4f;
+        _testMaterial.SetInt(propertyName, startValue);
+
+        // Act
+        _testMaterial.ATween(propertyName, targetValue, duration);
+
+        // Observe
+        yield return new WaitForSeconds(duration / 2f);
+        int midValue = _testMaterial.GetInt(propertyName);
+
+        Assert.AreNotEqual(startValue, midValue, "O int deve ter mudado a meio do tween.");
+        Assert.IsTrue(midValue > startValue && midValue < targetValue, "O valor a meio do caminho deve estar entre o início e o fim.");
+
+        yield return new WaitForSeconds(duration / 2f);
+
+        // Assert
+        Assert.AreEqual(targetValue, _testMaterial.GetInt(propertyName), "O int final deve ser igual ao valor alvo.");
+    }
+    
+    [UnityTest]
+    public IEnumerator ATween_Material_VectorProperty_ChangesTowardsTarget()
+    {
+        // Arrange
+        string propertyName = "_Vector";
+        Vector4 startValue = new Vector4(0, 0, 0, 0);
+        Vector4 targetValue = new Vector4(1, 2, 3, 4);
+        float duration = 0.4f;
+        _testMaterial.SetVector(propertyName, startValue);
+        float initialDistance = Vector4.Distance(startValue, targetValue);
+
+        // Act
+        _testMaterial.ATween(propertyName, targetValue, duration);
+
+        // Observe
+        yield return new WaitForSeconds(duration / 2f);
+        Vector4 midValue = _testMaterial.GetVector(propertyName);
+        float midDistance = Vector4.Distance(midValue, targetValue);
+
+        Assert.AreNotEqual(startValue, midValue, "O vetor deve ter mudado a meio do tween.");
+        Assert.Less(midDistance, initialDistance, "O vetor deve estar mais perto do alvo a meio do tween.");
+        
+        yield return new WaitForSeconds(duration / 2f);
+
+        // Assert
+        Assert.AreEqual(targetValue, _testMaterial.GetVector(propertyName), "O vetor final deve ser igual ao valor alvo.");
+    }
+    
 }
 

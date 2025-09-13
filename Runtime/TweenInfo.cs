@@ -76,9 +76,22 @@ namespace AnimaTween
                 _progressHandler = HandleSimpleProgress;
             }
             // --- Attempt to find an optimized path for common types ---
-
-            // Transform
-            if (target is Transform t)
+            if (target is RectTransform rt)
+            {
+                switch (propertyName)
+                {
+                    case "anchoredPosition": _vector2Setter = (v) => rt.anchoredPosition = v; return;
+                    case "sizeDelta": _vector2Setter = (v) => rt.sizeDelta = v; return;
+                    case "position": _vector3Setter = (v) => rt.position = v; return;
+                    case "localPosition": _vector3Setter = (v) => rt.localPosition = v; return;
+                    case "eulerAngles": _vector3Setter = (v) => rt.eulerAngles = v; return;
+                    case "localEulerAngles": _vector3Setter = (v) => rt.localEulerAngles = v; return;
+                    case "localScale": _vector3Setter = (v) => rt.localScale = v; return;
+                    case "rotation": _quaternionSetter = (q) => rt.rotation = q; return;
+                    case "localRotation": _quaternionSetter = (q) => rt.localRotation = q; return;
+                }
+            }
+            else if (target is Transform t)
             {
                 switch (propertyName)
                 {
@@ -110,38 +123,22 @@ namespace AnimaTween
                     case "maxVisibleCharacters": _intSetter = (i) => tmpText.maxVisibleCharacters = i; return;
                 }
             }
-            else if (target is RectTransform rt)
-            {
-                switch (propertyName)
-                {
-                    case "anchoredPosition": _vector2Setter = (v) => rt.anchoredPosition = v; return;
-                    case "sizeDelta": _vector2Setter = (v) => rt.sizeDelta = v; return;
-                    case "position": _vector3Setter = (v) => rt.position = v; return;
-                    case "localPosition": _vector3Setter = (v) => rt.localPosition = v; return;
-                    case "eulerAngles": _vector3Setter = (v) => rt.eulerAngles = v; return;
-                    case "localEulerAngles": _vector3Setter = (v) => rt.localEulerAngles = v; return;
-                    case "localScale": _vector3Setter = (v) => rt.localScale = v; return;
-                    case "rotation": _quaternionSetter = (q) => rt.rotation = q; return;
-                    case "localRotation": _quaternionSetter = (q) => rt.localRotation = q; return;
-                }
-            }
             else if (target is Rigidbody rb3d)
             {
                 switch (propertyName)
                 {
-                    case "position": _vector3Setter = (v) => rb3d.position = v; return;
-                    case "rotation": _quaternionSetter = (q) => rb3d.rotation = q; return;
+                    case "position": _vector3Setter = (v) => rb3d.MovePosition(v); return;
+                    case "rotation": _quaternionSetter = (q) => rb3d.MoveRotation(q); return;
                     case "velocity": _vector3Setter = (v) => rb3d.linearVelocity = v; return;
                     case "angularVelocity": _vector3Setter = (v) => rb3d.angularVelocity = v; return;
                 }
             }
-            // **NOVO:** Suporte para Rigidbody 2D
             else if (target is Rigidbody2D rb2d)
             {
                 switch (propertyName)
                 {
-                    case "position": _vector2Setter = (v) => rb2d.position = v; return;
-                    case "rotation": _floatSetter = (f) => rb2d.rotation = f; return;
+                    case "position": _vector2Setter = (v) => rb2d.MovePosition(v); return;
+                    case "rotation": _floatSetter = (f) => rb2d.MoveRotation(f); return;
                     case "velocity": _vector2Setter = (v) => rb2d.linearVelocity = v; return;
                     case "angularVelocity": _floatSetter = (f) => rb2d.angularVelocity = f; return;
                 }
@@ -203,7 +200,7 @@ namespace AnimaTween
                             _vector2IntSetter = (val) => m.SetVector(propertyName, (Vector2)val);
                             return;
                         default:
-                            Debug.Log($"Cant find type {ToValue}");
+                            Debug.LogError($"Cant find type {ToValue} to Material");
                             break;
                     }
                 }
@@ -247,7 +244,8 @@ namespace AnimaTween
             {
                 if (propertyName == "colorGradient") { _gradientSetter = (g) => tr.colorGradient = g; return; }
             }
-            else if (propertyInfo != null)
+            
+            if (propertyInfo != null)
             {
                 CreateTypedSetter(propertyInfo.PropertyType, (val) => propertyInfo.SetValue(target, val));
             }
@@ -285,7 +283,7 @@ namespace AnimaTween
                     _colorSetter = (v) => setter(v);
                     break;
                 case "Vector2":
-                    _vector2Setter = (v) => setter(v);
+                    _vector2Setter = (v) => setter(v); ;
                     break;
                 case "Vector3":
                     _vector3Setter = (v) => setter(v);
@@ -351,6 +349,8 @@ namespace AnimaTween
             if (_quaternionSetter != null && value is Quaternion q) { _quaternionSetter(q); return; }
             if (_rectSetter != null && value is Rect r) { _rectSetter(r); return; }
             if (_boundsSetter != null && value is Bounds b) { _boundsSetter(b); return; }
+            if (_vector2IntSetter != null && value is Vector2Int v2I) { _vector2IntSetter(v2I); return; }
+            if (_vector3IntSetter != null && value is Vector3Int v3I) { _vector3IntSetter(v3I); return; }
             // --- If no specific setter exists, use the reflection fallback ---
             if (FieldInfo != null) FieldInfo.SetValue(Target, value);
             else PropertyInfo?.SetValue(Target, value);
@@ -376,8 +376,7 @@ namespace AnimaTween
 
             // Calcula o progresso DENTRO do segmento atual.
             float progressInSegment = (easedProgress - (currentSegmentIndex * progressPerSegment)) / progressPerSegment;
-
-            // Reutiliza a lógica do tween 
+            
             HandleSimpleProgress(progressInSegment);
         }
 
@@ -452,6 +451,10 @@ namespace AnimaTween
             {
                 _vector4Setter(Vector4.Lerp((Vector4)_currentStartValue, (Vector4)_currentEndValue, getEasedProgress));
             }
+            else if (targetType == typeof(string))
+            {
+                _stringSetter(LerpString((string)_currentStartValue, (string)_currentEndValue, getEasedProgress));
+            }
             else
             {
                 Debug.LogError($"AnimaTween: Unsupported property type for tweening: {targetType.Name}");
@@ -485,41 +488,98 @@ namespace AnimaTween
             return new Bounds(center, size);
         }
         
-        /// <summary>
-        /// Interpola entre dois gradientes amostrando-os em vários pontos.
-        /// </summary>
-        /// <param name="a">O gradiente inicial.</param>
-        /// <param name="b">O gradiente final.</param>
-        /// <param name="t">O progresso da interpolação (0 a 1).</param>
-        /// <param name="resolution">O número de amostras a retirar. Mais alto é mais preciso, mas mais lento.</param>
-        /// <returns>Um novo gradiente que é a mistura dos dois.</returns>
-        private Gradient LerpGradient(Gradient a, Gradient b, float t, int resolution = 16)
+        private string LerpString(string start, string end, float easedProgress)
         {
-            var newGradient = new Gradient();
-
-            // Cria os arrays para as novas chaves de cor e alfa.
-            var colorKeys = new GradientColorKey[resolution];
-            var alphaKeys = new GradientAlphaKey[resolution];
-
-            for (int i = 0; i < resolution; i++)
+            bool isStartNumeric = double.TryParse(start, out double startNum);
+            bool isEndNumeric = double.TryParse(end, out double endNum);
+            
+            if (isStartNumeric && isEndNumeric)
             {
-                // Calcula a posição da amostra atual (de 0 a 1).
-                float samplePos = (float)i / (resolution - 1);
+                bool isIntegerTween = start.IndexOf('.') == -1 && end.IndexOf('.') == -1;
+                
+                double currentValue = startNum + (endNum - startNum) * easedProgress; 
+                
+                string displayValue = isIntegerTween 
+                    ? Mathf.RoundToInt((float)currentValue).ToString() 
+                    : currentValue.ToString("F2"); 
+                
+                return displayValue;
+            }
+            else // Caso contrário, mantém o efeito de máquina de escrever.
+            {
+                // Caso 1 e 2: Simples crescer ou encolher (uma string começa com a outra).
+                if (end.StartsWith(start) || start.StartsWith(end))
+                {
+                    int startLength = start.Length;
+                    int endLength = end.Length;
+                    string baseString = endLength > startLength ? end : start;
+                    int currentLength = Mathf.RoundToInt(Mathf.Lerp(startLength, endLength, easedProgress));
+                    return baseString.Substring(0, Mathf.Clamp(currentLength, 0, baseString.Length));
+                        
+                }
+                // Caso 3: Substituir (as strings são diferentes).
+                else
+                {
+                    int prefixLength = 0;
+                    while (prefixLength < start.Length && prefixLength < end.Length && start[prefixLength] == end[prefixLength])
+                    {
+                        prefixLength++;
+                    }
+                    string commonPrefix = start.Substring(0, prefixLength);
 
-                // Obtém a cor de cada gradiente nesta posição.
-                Color colorA = a.Evaluate(samplePos);
-                Color colorB = b.Evaluate(samplePos);
+                    // 2. Calcula a proporção da duração com base no número de caracteres a serem alterados.
+                    float shrinkChars = start.Length - prefixLength;
+                    float growChars = end.Length - prefixLength;
+                    float totalCharsChanged = shrinkChars + growChars;
 
-                // Interpola entre as duas cores amostradas.
-                Color finalColor = Color.Lerp(colorA, colorB, t);
+                    // Evita divisão por zero se as strings forem idênticas (embora este caso não deva ser alcançado).
+                    if (totalCharsChanged <= 0)
+                    {
+                        return end;
+                    }
 
-                // Cria as novas chaves de cor e alfa.
-                colorKeys[i] = new GradientColorKey(finalColor, samplePos);
-                alphaKeys[i] = new GradientAlphaKey(finalColor.a, samplePos);
+                    float shrinkProportion = shrinkChars / totalCharsChanged;
+                    float growProportion = growChars / totalCharsChanged;
+
+                    if (easedProgress < shrinkProportion)
+                    {
+                        int currentLength = Mathf.RoundToInt(
+                            Mathf.Lerp(start.Length, commonPrefix.Length, easedProgress));
+                        return start.Substring(0, 
+                            Mathf.Clamp(currentLength, 0, start.Length));
+                    }
+                    else
+                    {
+                        int currentLength = Mathf.RoundToInt(Mathf.Lerp(commonPrefix.Length, end.Length, easedProgress));
+                        return end.Substring(0, Mathf.Clamp(currentLength, 0, end.Length));
+                    }
+                }
+            }
+        }
+        
+        
+        public static Gradient LerpGradient(Gradient a, Gradient b, float t, int maxKeys = 8)
+        {
+            Gradient result = new Gradient();
+            int keyCount = Mathf.Min(maxKeys, Mathf.Max(a.colorKeys.Length, b.colorKeys.Length));
+            GradientColorKey[] colorKeys = new GradientColorKey[keyCount];
+            GradientAlphaKey[] alphaKeys = new GradientAlphaKey[keyCount];
+
+            for (int i = 0; i < keyCount; i++)
+            {
+                float time = (float)i / (keyCount - 1);
+                Color ca = a.Evaluate(time);
+                Color cb = b.Evaluate(time);
+                Color c = Color.Lerp(ca, cb, t);
+
+                colorKeys[i] = new GradientColorKey(c, time);
+                alphaKeys[i] = new GradientAlphaKey(c.a, time);
             }
 
-            newGradient.SetKeys(colorKeys, alphaKeys);
-            return newGradient;
+            result.SetKeys(colorKeys, alphaKeys);
+            return result;
         }
+
+        
     }
 }

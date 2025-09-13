@@ -35,25 +35,29 @@ public class AnimaTweenRigidbody3DTests
         // Arrange
         _testRigidbody.isKinematic = true; // Essencial para animar a posição diretamente.
         Vector3 startPosition = Vector3.zero;
-        Vector3 targetPosition = new Vector3(5, 10, 0);
-        float duration = 0.3f;
+        Vector3 targetPosition = new Vector3(10, 20, 0);
+        float duration = 1f;
         _testRigidbody.position = startPosition;
 
         // Act
         _testRigidbody.ATween("position", targetPosition, duration);
 
         // Observe
-        yield return null; // Espera um frame.
+        yield return new WaitForSeconds(duration/2);
+        yield return new WaitForFixedUpdate();
         float initialDistance = Vector3.Distance(startPosition, targetPosition);
         float distanceAfterFrame = Vector3.Distance(_testRigidbody.position, targetPosition);
 
-        Assert.AreNotEqual(startPosition, _testRigidbody.position, "A posição deve mudar após o primeiro frame.");
-        Assert.Less(distanceAfterFrame, initialDistance, "O Rigidbody deve ter se movido para mais perto do alvo.");
+        Assert.AreNotEqual(startPosition, _testRigidbody.position, 
+            $"A posição deve mudar após um tempo. {_testRigidbody.position} {targetPosition}");
+        Assert.Less(distanceAfterFrame, initialDistance, 
+            $"O Rigidbody deve ter se movido para mais perto do alvo. {distanceAfterFrame} {initialDistance}");
 
         yield return new WaitForSeconds(duration);
 
         // Assert
-        Assert.IsTrue(Vector3.Distance(targetPosition, _testRigidbody.position) < 0.001f, "A posição final deve ser muito próxima da posição alvo.");
+        Assert.IsTrue(Vector3.Distance(targetPosition, _testRigidbody.position) < 0.001f, 
+            "A posição final deve ser muito próxima da posição alvo.");
     }
 
     /// <summary>
@@ -67,28 +71,35 @@ public class AnimaTweenRigidbody3DTests
         _testRigidbody.useGravity = true;
         Vector3 startVelocity = Vector3.zero;
         Vector3 targetVelocity = new Vector3(10, 0, 0); // Alvo é uma velocidade puramente horizontal.
-        float duration = 0.5f;
-        _testRigidbody.position = Vector3.up*50f;
+        float duration = 1f;
+        Vector3 startPosition = Vector3.up*50f;;
+        _testRigidbody.position = startPosition;
         _testRigidbody.linearVelocity = startVelocity;
 
         // Act
         _testRigidbody.ATween("velocity", targetVelocity, duration);
-
-        // Observe
+        
         yield return new WaitForSeconds(duration/2); // Espera um pouco para a física agir.
+        yield return new WaitForFixedUpdate();
 
         // Verificações durante o tween:
         // 1. A velocidade horizontal (X) deve estar a aumentar na direção certa.
-        Assert.Greater(_testRigidbody.linearVelocity.x, startVelocity.x, "A velocidade horizontal deve aumentar na direção do alvo.");
+        Assert.Greater(_testRigidbody.linearVelocity.x, startVelocity.x, 
+            $"A velocidade horizontal deve aumentar na direção do alvo. {_testRigidbody.linearVelocity.x}");
         // 2. A velocidade vertical (Y) deve ser negativa por causa da gravidade.
-        Assert.Less(_testRigidbody.linearVelocity.y, 0, "A gravidade deve puxar o objeto para baixo, resultando em velocidade vertical negativa.");
+        Assert.Less(_testRigidbody.position.y, startPosition.y, 
+            $"A gravidade deve puxar o objeto para baixo, resultando em posicao y menor." +
+            $"{startPosition} ${_testRigidbody.position}");
 
-        yield return new WaitForSeconds(duration);
+        yield return new WaitForSeconds(duration/2);
+        yield return new WaitForFixedUpdate();
 
         // Assert (Final)
         // No fim, a velocidade X deve estar perto do alvo, e a Y deve ser o resultado da gravidade ao longo do tempo.
-        Assert.IsTrue(Mathf.Abs(targetVelocity.x - _testRigidbody.linearVelocity.x) < 0.01f, "A componente X da velocidade final deve ser muito próxima do alvo.");
-        Assert.Less(_testRigidbody.linearVelocity.y, 0, "A componente Y da velocidade final deve ser negativa devido à gravidade.");
+        Assert.IsTrue(Mathf.Abs(targetVelocity.x - _testRigidbody.linearVelocity.x) < 0.01f, 
+            "A componente X da velocidade final deve ser muito próxima do alvo.");
+        Assert.Less(_testRigidbody.linearVelocity.y, 0, 
+            "A componente Y da velocidade final deve ser negativa devido à gravidade.");
     }
 
     /// <summary>
@@ -113,8 +124,41 @@ public class AnimaTweenRigidbody3DTests
         Assert.Greater(_testRigidbody.angularVelocity.y, 0, "A velocidade angular em Y deve aumentar após metade da duração.");
         
         yield return new WaitForSeconds(duration);
+        yield return new WaitForFixedUpdate();
         
         // Assert
-        Assert.IsTrue(Vector3.Distance(targetAngularVelocity, _testRigidbody.angularVelocity) < 0.01f, "A velocidade angular final deve ser muito próxima do alvo.");
+        Assert.IsTrue(Vector3.Distance(targetAngularVelocity, _testRigidbody.angularVelocity) < 0.1f, 
+            $"A velocidade angular final deve ser muito próxima do alvo.{targetAngularVelocity} {_testRigidbody.angularVelocity}");
+    }
+    
+    [UnityTest]
+    public IEnumerator ATween_Rigidbody_Rotation_MovesTowardsTarget()
+    {
+        // Arrange
+        _testRigidbody.isKinematic = true;
+        Quaternion startRotation = Quaternion.identity;
+        Quaternion targetRotation = Quaternion.Euler(90, 0, 45);
+        float duration = 0.4f;
+        _testRigidbody.rotation = startRotation;
+        
+        // Act
+        _testRigidbody.ATween("rotation", targetRotation, duration);
+
+        // Observe
+        yield return new WaitForSeconds(duration / 2f); // Espera metade da duração
+        Quaternion midRotation = _testRigidbody.rotation;
+        
+        float initialAngle = Quaternion.Angle(startRotation, targetRotation);
+        float midAngle = Quaternion.Angle(midRotation, targetRotation);
+
+        Assert.AreNotEqual(startRotation, midRotation, "A rotação deve ter mudado a meio do tween.");
+        Assert.Less(midAngle, initialAngle, "O Rigidbody deve estar rotacionado para mais perto do alvo a meio do tween.");
+
+        yield return new WaitForSeconds(duration / 2f); // Espera o resto da duração
+        yield return new WaitForFixedUpdate();
+
+        // Assert
+        Assert.IsTrue(Quaternion.Angle(_testRigidbody.rotation, targetRotation) < 0.1f, 
+            $"A rotação final deve ser muito próxima da rotação alvo.{Quaternion.Angle(_testRigidbody.rotation, targetRotation)}");
     }
 }

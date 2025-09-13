@@ -284,7 +284,7 @@ namespace AnimaTween
             Vector3 startValue = (Vector3)(fieldInfo?.GetValue(target) ?? propertyInfo?.GetValue(target));
     
             // O caminho do punch é simples: vai até o pico do "soco" e volta ao início.
-            var path = new Vector3[]
+            var path = new []
             {
                 startValue + punch,
                 startValue

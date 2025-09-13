@@ -55,7 +55,8 @@ public class AnimaTweenRectTransformTests
         yield return new WaitForSeconds(duration);
         
         // Assert
-        Assert.IsTrue(Vector2.Distance(targetPosition, _testRectTransform.anchoredPosition) < 0.001f, "A posição ancorada final deve ser muito próxima da posição alvo.");
+        Assert.IsTrue(Vector2.Distance(targetPosition, _testRectTransform.anchoredPosition) < 0.001f, $"A posição ancorada final " +
+            $"{_testRectTransform.anchoredPosition} deve ser muito próxima da posição alvo {targetPosition}.");
     }
 
     /// <summary>
@@ -103,8 +104,7 @@ public class AnimaTweenRectTransformTests
 
         // Act
         _testRectTransform.ATween("localScale", targetScale, duration);
-
-        // Observe
+        
         yield return null;
         Vector3 scaleAfterFirstFrame = _testRectTransform.localScale;
         float distanceAfterFirstFrame = Vector3.Distance(scaleAfterFirstFrame, targetScale);

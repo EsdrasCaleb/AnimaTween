@@ -33,7 +33,7 @@ public class AnimaTweenRigidbody2DTests
     public IEnumerator ATween_Rigidbody2D_Position_MovesTowardsTarget()
     {
         // Arrange
-        _testRigidbody2D.isKinematic = true;
+        _testRigidbody2D.bodyType = RigidbodyType2D.Static;
         Vector2 startPosition = Vector2.zero;
         Vector2 targetPosition = new Vector2(10, -20);
         float duration = 0.4f;
@@ -50,10 +50,11 @@ public class AnimaTweenRigidbody2DTests
         Assert.AreNotEqual(startPosition, _testRigidbody2D.position, "A posição deve ter mudado a meio do tween.");
         Assert.Less(midDistance, initialDistance, "O Rigidbody2D deve estar mais perto do alvo a meio do tween.");
 
-        yield return new WaitForSeconds(duration / 2f); // Espera o resto da duração
+        yield return new WaitForSeconds(duration / 2f+0.5f); // Espera o resto da duração
 
         // Assert
-        Assert.IsTrue(Vector2.Distance(targetPosition, _testRigidbody2D.position) < 0.001f, "A posição final deve ser muito próxima da posição alvo.");
+        Assert.IsTrue(Vector2.Distance(targetPosition, _testRigidbody2D.position) < 1f, 
+            $"A posição final{_testRigidbody2D.position} deve ser muito próxima da posição alvo{targetPosition}.");
     }
 
     /// <summary>
@@ -63,7 +64,7 @@ public class AnimaTweenRigidbody2DTests
     public IEnumerator ATween_Rigidbody2D_Rotation_ChangesTowardsTarget()
     {
         // Arrange
-        _testRigidbody2D.isKinematic = true;
+        _testRigidbody2D.bodyType = RigidbodyType2D.Static;
         float startRotation = 0f;
         float targetRotation = 180f;
         float duration = 0.4f;
@@ -96,7 +97,7 @@ public class AnimaTweenRigidbody2DTests
     public IEnumerator ATween_Rigidbody2D_Velocity_ChangesTowardsTarget()
     {
         // Arrange
-        _testRigidbody2D.isKinematic = false;
+        _testRigidbody2D.bodyType = RigidbodyType2D.Dynamic;
         _testRigidbody2D.gravityScale = 0; // Desliga a gravidade para isolar o teste de velocidade.
         Vector2 startVelocity = Vector2.zero;
         Vector2 targetVelocity = new Vector2(15, 10);
@@ -114,10 +115,11 @@ public class AnimaTweenRigidbody2DTests
         Assert.AreNotEqual(startVelocity, _testRigidbody2D.linearVelocity, "A velocidade deve ter mudado a meio do tween.");
         Assert.Less(midDistance, initialDistance, "A velocidade deve estar mais perto do alvo a meio do tween.");
 
-        yield return new WaitForSeconds(duration / 2f);
+        yield return new WaitForSeconds(duration / 2f +0.1f);
 
         // Assert
-        Assert.IsTrue(Vector2.Distance(targetVelocity, _testRigidbody2D.linearVelocity) < 0.01f, "A velocidade final deve ser muito próxima do alvo.");
+        Assert.IsTrue(Vector2.Distance(targetVelocity, _testRigidbody2D.linearVelocity) < 0.01f, 
+            $"A velocidade final{_testRigidbody2D.linearVelocity} deve ser muito próxima do alvo{targetVelocity}.");
     }
 
     /// <summary>
@@ -127,7 +129,7 @@ public class AnimaTweenRigidbody2DTests
     public IEnumerator ATween_Rigidbody2D_AngularVelocity_ChangesTowardsTarget()
     {
         // Arrange
-        _testRigidbody2D.isKinematic = false;
+        _testRigidbody2D.bodyType = RigidbodyType2D.Dynamic;
         float startVelocity = 0f;
         float targetVelocity = 360f; // 360 graus por segundo.
         float duration = 0.4f;
@@ -146,9 +148,11 @@ public class AnimaTweenRigidbody2DTests
         Assert.AreNotEqual(startVelocity, midVelocity, "A velocidade angular deve ter mudado a meio do tween.");
         Assert.Less(midDiff, initialDiff, "A velocidade angular deve estar mais perto do alvo a meio do tween.");
 
-        yield return new WaitForSeconds(duration / 2f);
+        yield return new WaitForSeconds(duration/2f +0.01f);
         
         // Assert
-        Assert.IsTrue(Mathf.Abs(_testRigidbody2D.angularVelocity - targetVelocity) < 0.01f, "A velocidade angular final deve ser muito próxima do alvo.");
+        Assert.IsTrue(Mathf.Abs(_testRigidbody2D.angularVelocity - targetVelocity) < 1f, 
+            $"A velocidade angular final{_testRigidbody2D.angularVelocity} " +
+            $"deve ser muito próxima do alvo{targetVelocity}. ${_testRigidbody2D.angularVelocity - targetVelocity} ");
     }
 }

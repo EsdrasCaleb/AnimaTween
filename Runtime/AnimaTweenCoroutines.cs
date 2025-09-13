@@ -28,12 +28,6 @@ namespace AnimaTween
             tweenInfo.StartValue = start;
             tweenInfo.ToValue = end;
             Type targetType = tweenInfo.StartValue.GetType();
-
-            if (targetType == typeof(string))
-            {
-                return AnimateString(tweenInfo, (string)start, (string)end, duration, easing);
-            }
-
             Action<float> updater = p => tweenInfo.SetProgress(GetEasedProgress(easing, p));;
 
             return AnimateCore(updater, duration);
@@ -55,120 +49,6 @@ namespace AnimaTween
             }
             // This final call ensures the animation always ends at exactly 100% progress.
             updater(1.0f);
-        }
-        
-        /// <summary>
-        /// A special coroutine to handle string animations.
-        /// It performs a numeric tween if start/end values are numbers, otherwise does a typewriter effect.
-        /// </summary>
-        private static IEnumerator AnimateString(TweenInfo tweenInfo, string startValue, string toValue, float duration, Easing easing)
-        {
-            // Tenta converter as strings para números (double para abranger int e float).
-            bool isStartNumeric = double.TryParse(startValue, out double startNum);
-            bool isEndNumeric = double.TryParse(toValue, out double endNum);
-
-            // Se AMBAS as strings forem numéricas, faz o tween numérico.
-            if (isStartNumeric && isEndNumeric)
-            {
-                // Verifica se os números originais eram inteiros para manter o formato.
-                bool isIntegerTween = startValue.IndexOf('.') == -1 && toValue.IndexOf('.') == -1;
-
-                Action<float> updater = p =>
-                {
-                    float easedProgress = GetEasedProgress(easing, p);
-                    double currentValue = startNum + (endNum - startNum) * easedProgress; // Lerp para double
-
-                    // Converte o número de volta para string, formatando como inteiro se necessário.
-                    string displayValue = isIntegerTween 
-                        ? Mathf.RoundToInt((float)currentValue).ToString() 
-                        : currentValue.ToString("F2"); // "F2" para formatar com 2 casas decimais, ajuste se necessário.
-                    
-                    tweenInfo.SetValue(displayValue);
-                };
-
-                return AnimateCore(updater, duration);
-            }
-            else // Caso contrário, mantém o efeito de máquina de escrever.
-            {
-                // Caso 1 e 2: Simples crescer ou encolher (uma string começa com a outra).
-                if (toValue.StartsWith(startValue) || startValue.StartsWith(toValue))
-                {
-                    int startLength = startValue.Length;
-                    int endLength = toValue.Length;
-                    string baseString = endLength > startLength ? toValue : startValue;
-
-                    Action<float> updater = p => {
-                        float easedProgress = GetEasedProgress(easing, p);
-                        int currentLength = Mathf.RoundToInt(Mathf.Lerp(startLength, endLength, easedProgress));
-                        string currentValue = baseString.Substring(0, Mathf.Clamp(currentLength, 0, baseString.Length));
-                        tweenInfo.SetValue(currentValue);
-                    };
-
-                    return AnimateCore(updater, duration);
-                }
-                // Caso 3: Substituir (as strings são diferentes).
-                else
-                {
-                    // Isso requer uma sequência de dois tweens, então criamos uma corrotina especial para isso.
-                    return AnimateStringReplace(tweenInfo, startValue, toValue, duration, easing);
-                }
-            }
-        }
-        
-        
-        /// <summary>
-        /// A special coroutine to handle replacing one string with another by shrinking to a
-        /// common prefix and then growing to the new string.
-        /// </summary>
-        private static IEnumerator AnimateStringReplace(TweenInfo tweenInfo, string startValue, string toValue, float duration, Easing easing)
-        {
-            // 1. Encontra o prefixo comum mais longo.
-            int prefixLength = 0;
-            while (prefixLength < startValue.Length && prefixLength < toValue.Length && startValue[prefixLength] == toValue[prefixLength])
-            {
-                prefixLength++;
-            }
-            string commonPrefix = startValue.Substring(0, prefixLength);
-
-            // 2. Calcula a proporção da duração com base no número de caracteres a serem alterados.
-            float shrinkChars = startValue.Length - prefixLength;
-            float growChars = toValue.Length - prefixLength;
-            float totalCharsChanged = shrinkChars + growChars;
-
-            // Evita divisão por zero se as strings forem idênticas (embora este caso não deva ser alcançado).
-            if (totalCharsChanged <= 0)
-            {
-                yield return new WaitForSeconds(duration);
-                yield break;
-            }
-
-            float shrinkProportion = shrinkChars / totalCharsChanged;
-            float growProportion = growChars / totalCharsChanged;
-
-            float shrinkDuration = duration * shrinkProportion;
-            float growDuration = duration * growProportion;
-
-            // 3. Fase de Encolher: Anima de startValue até o prefixo comum.
-            int shrinkStartLength = startValue.Length;
-            int shrinkEndLength = commonPrefix.Length;
-            Action<float> shrinkUpdater = p => {
-                float easedProgress = GetEasedProgress(easing, p);
-                int currentLength = Mathf.RoundToInt(Mathf.Lerp(shrinkStartLength, shrinkEndLength, easedProgress));
-                string currentValue = startValue.Substring(0, Mathf.Clamp(currentLength, 0, startValue.Length));
-                tweenInfo.SetValue(currentValue);
-            };
-            yield return AnimateCore(shrinkUpdater, shrinkDuration);
-
-            // 4. Fase de Crescer: Anima do prefixo comum até o toValue.
-            int growStartLength = commonPrefix.Length;
-            int growEndLength = toValue.Length;
-            Action<float> growUpdater = p => {
-                float easedProgress = GetEasedProgress(easing, p);
-                int currentLength = Mathf.RoundToInt(Mathf.Lerp(growStartLength, growEndLength, easedProgress));
-                string currentValue = toValue.Substring(0, Mathf.Clamp(currentLength, 0, toValue.Length));
-                tweenInfo.SetValue(currentValue);
-            };
-            yield return AnimateCore(growUpdater, growDuration);
         }
 
 
