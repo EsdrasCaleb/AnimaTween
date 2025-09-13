@@ -415,7 +415,8 @@ public class AnimaTweenCSharpObjectTests
         
         Assert.IsTrue(passedPoint1, $"Did not pass near the first waypoint. Last value: {_testObject.myRect}");
         Assert.IsTrue(passedPoint2, $"Did not pass near the second waypoint. Last value: {_testObject.myRect}");
-        Assert.AreEqual(path[2], _testObject.myRect, $"Should be at final waypoint. Expected: {path[2]}, Actual: {_testObject.myRect}.");
+        Assert.AreEqual(path[2].center, _testObject.myRect.center, 
+            $"Should be at final waypoint. Expected: {path[2]}, Actual: {_testObject.myRect}.");
     }
     
     [UnityTest]

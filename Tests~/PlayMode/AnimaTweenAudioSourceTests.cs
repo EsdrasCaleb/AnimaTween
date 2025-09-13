@@ -46,7 +46,7 @@ public class AnimaTweenAudioSourceTests
     {
         float startValue = 1f;
         float targetValue = 2.5f;
-        float duration = 0.2f;
+        float duration = 1f;
         _testAudioSource.pitch = startValue;
 
         _testAudioSource.ATween("pitch", targetValue, duration);
