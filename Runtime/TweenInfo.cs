@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Threading;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,6 +12,7 @@ namespace AnimaTween
         // --- Propriedades Gerais ---
         public Coroutine Coroutine { get; set; }
         public Action OnComplete { get; set; }
+        public CancellationTokenSource  CTS { get; set; }
         // --- Sistema de Caminhos (Waypoints) ---
         private object[] _waypoints;
         private object _currentStartValue;
@@ -47,6 +49,7 @@ namespace AnimaTween
         {
             Target = target;
             OnComplete = onComplete;
+            CTS = new CancellationTokenSource();
         }
         
         
@@ -61,6 +64,7 @@ namespace AnimaTween
             OnComplete = onComplete;
             StartValue = startValue;
             ToValue = toValue;
+            CTS = new CancellationTokenSource();
             if (midValues != null && midValues.Length > 0)
             {
                 _waypoints = new object[midValues.Length + 2];
@@ -313,29 +317,25 @@ namespace AnimaTween
             }
         }
 
-        // --- SetValue methods are now extremely simple and fast ---
-
-        public void SetValue(float value)   { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _floatSetter?.Invoke(value); }
-        public void SetValue(double value)  { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _doubleSetter?.Invoke(value); }
-        public void SetValue(int value)     { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _intSetter?.Invoke(value); }
-        public void SetValue(string value)     { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _stringSetter?.Invoke(value); }
-        public void SetValue(Color value)   { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _colorSetter?.Invoke(value); }
-        public void SetValue(Vector2 value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector2Setter?.Invoke(value); }
-        public void SetValue(Vector3 value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector3Setter?.Invoke(value); }
-        public void SetValue(Vector4 value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector4Setter?.Invoke(value); }
-        public void SetValue(Vector2Int value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector2IntSetter?.Invoke(value); }
-        public void SetValue(Vector3Int value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _vector3IntSetter?.Invoke(value); }
-        public void SetValue(Quaternion value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _quaternionSetter?.Invoke(value); }
-        public void SetValue(Rect value)    { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _rectSetter?.Invoke(value); }
-        public void SetValue(Bounds value)  { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _boundsSetter?.Invoke(value); }
-        public void SetValue(Gradient value) { if (!AnimaTweenCoroutines.IsTargetDestroyed(Target)) _gradientSetter?.Invoke(value); }
+        public void SetValue(float value)   {_floatSetter?.Invoke(value); }
+        public void SetValue(double value)  {_doubleSetter?.Invoke(value); }
+        public void SetValue(int value)     {_intSetter?.Invoke(value); }
+        public void SetValue(string value)     {_stringSetter?.Invoke(value); }
+        public void SetValue(Color value)   {_colorSetter?.Invoke(value); }
+        public void SetValue(Vector2 value) {_vector2Setter?.Invoke(value); }
+        public void SetValue(Vector3 value) {_vector3Setter?.Invoke(value); }
+        public void SetValue(Vector4 value) {_vector4Setter?.Invoke(value); }
+        public void SetValue(Vector2Int value) {_vector2IntSetter?.Invoke(value); }
+        public void SetValue(Vector3Int value) {_vector3IntSetter?.Invoke(value); }
+        public void SetValue(Quaternion value) {_quaternionSetter?.Invoke(value); }
+        public void SetValue(Rect value)    {_rectSetter?.Invoke(value); }
+        public void SetValue(Bounds value)  {_boundsSetter?.Invoke(value); }
+        public void SetValue(Gradient value) {_gradientSetter?.Invoke(value); }
         /// <summary>
         /// The new SetValue prioritizes the optimized path.
         /// </summary>
         public void SetValue(object value)
         {
-            if (AnimaTweenCoroutines.IsTargetDestroyed(Target)) return;
-
             // --- Attempt to use the optimized setters first ---
             if (_floatSetter != null && value is float f) { _floatSetter(f); return; }
             if (_intSetter != null && value is int i) { _intSetter(i); return; }

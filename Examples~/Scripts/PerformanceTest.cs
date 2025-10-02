@@ -83,6 +83,7 @@ public class AnimaTweenPerformanceTest : MonoBehaviour
         {
             if(obj != null)
             {
+                obj.ACancel();
                 Destroy(obj.gameObject);
             }
         }

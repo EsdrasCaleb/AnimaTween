@@ -9,47 +9,39 @@ namespace AnimaTween
 {
     internal static class AnimaTweenCoroutines
     {
+        
         /// <summary>
-        /// Checks if a Unity Object has been destroyed.
+        /// The async dispatcher. It determines the correct interpolation logic and
+        /// passes it to the async AnimateCoreAsync engine.
         /// </summary>
-        public static bool IsTargetDestroyed(object target)
-        {
-            return target == null;
-        }
-
-        /// <summary>
-        /// The main dispatcher. It determines the correct interpolation logic based on the
-        /// target's type and passes it to the AnimateCore engine.
-        /// </summary>
-        public static IEnumerator Animate(TweenInfo tweenInfo, float duration, Easing easing, bool isFrom)
+        public static async Awaitable AnimateAsync(TweenInfo tweenInfo, float duration, Easing easing, bool isFrom)
         {
             object start = isFrom ? tweenInfo.ToValue : tweenInfo.StartValue;
             object end = isFrom ? tweenInfo.StartValue : tweenInfo.ToValue;
             tweenInfo.StartValue = start;
             tweenInfo.ToValue = end;
             Type targetType = tweenInfo.StartValue.GetType();
-            Action<float> updater = p => tweenInfo.SetProgress(GetEasedProgress(easing, p));;
+            Action<float> updater = p => tweenInfo.SetProgress(GetEasedProgress(easing, p));
 
-            return AnimateCore(updater, duration);
-        }
-        
-        /// <summary>
-        /// The generic animation engine. It handles the core loop of time and progress.
-        /// </summary>
-        private static IEnumerator AnimateCore(Action<float> updater, float duration)
-        {
             float elapsedTime = 0f;
-            
+    
             while (elapsedTime <= duration)
             {
                 float progress = (duration > 0) ? elapsedTime / duration : 1f;
+                if (tweenInfo.Target == null)
+                {
+                    tweenInfo.CTS?.Cancel();
+                    return;
+                }
                 updater(progress);
+
                 elapsedTime += Time.deltaTime;
-                yield return null;
+                await Awaitable.EndOfFrameAsync();
             }
-            // This final call ensures the animation always ends at exactly 100% progress.
+    
             updater(1.0f);
         }
+
 
 
         /// <summary>
