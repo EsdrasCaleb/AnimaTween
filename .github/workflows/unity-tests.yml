@@ -1,0 +1,70 @@
+name: Run AnimaTween Package Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Define a versão do Unity a ser usada para os testes.
+# É importante que esta seja a mesma versão com a qual você desenvolve o pacote.
+env:
+  UNITY_VERSION: 2022.3.10f1
+
+jobs:
+  test:
+    name: Run UPM Package Tests 📦
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout: Baixa o código do seu pacote.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # O código do pacote estará agora numa pasta na raiz do runner.
+
+      # 2. Rename Tests~ folder: Remove o '~' para que o Unity encontre os testes.
+      - name: Rename Tests folder
+        run: mv Tests~ Tests
+
+      # 3. Create Test Project: Cria um projeto Unity vazio onde o pacote será testado.
+      # Esta é a etapa crucial para testar um pacote em vez de um projeto completo.
+      - name: Create empty Unity test project
+        run: |
+          mkdir test-project
+          mkdir test-project/Assets
+          mkdir test-project/Packages
+          mkdir test-project/ProjectSettings
+          echo '{ "dependencies": { "com.esdrascaleb.animatween": "file:../" } }' > test-project/Packages/manifest.json
+          echo "projectVersion: ${UNITY_VERSION}" > test-project/ProjectSettings/ProjectVersion.txt
+      
+      # 4. Cache: Guarda a pasta 'Library' do projeto de teste para acelerar execuções futuras.
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: test-project/Library
+          key: Library-${{ hashFiles('Packages/packages-lock.json') }}
+          restore-keys: |
+            Library-
+
+      # 5. Test Runner: Executa os testes no projeto de teste que acabámos de criar.
+      - name: Run Unity tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          # Aponta para a pasta do nosso projeto de teste temporário.
+          projectPath: test-project
+          unityVersion: ${{ env.UNITY_VERSION }}
+          testMode: all
+      
+      # 6. Upload Artifacts: Guarda os resultados dos testes.
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Test results (all modes)
+          path: test-project/test-results
+          # O caminho dos resultados agora é relativo ao 'projectPath'.
+  
